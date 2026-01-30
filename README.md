@@ -17,8 +17,6 @@ When working with AI coding assistants, documentation gets scattered:
 
 **EVC Local Sync** automatically synchronizes `docs/` folders between your AI projects and Obsidian, ensuring a single source of truth with minimal context overhead.
 
-![EVC Local Sync Demo](assets/evc-logo.png)
-
 ## Features
 
 - **Bidirectional sync** between AI projects and Obsidian vault
@@ -191,7 +189,7 @@ Contributions are welcome! Please:
 
 ## License
 
-[MIT](LICENSE) © EVC Team
+[MIT](LICENSE) © Entire VC
 
 ## Support
 
