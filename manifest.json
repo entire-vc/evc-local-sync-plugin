@@ -1,0 +1,11 @@
+{
+  "id": "evc-local-sync",
+  "name": "EVC Local Sync to AI Agent",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.0",
+  "description": "Bidirectional synchronization of documentation between Obsidian vault and AI development projects (Claude Code, Cursor AI, VS Code). Ensures single source of truth for all project documentation with minimal context overhead for AI agents.",
+  "author": "EVC Team",
+  "authorUrl": "https://github.com/entire-vc",
+  "fundingUrl": "https://github.com/sponsors/entire-vc",
+  "isDesktopOnly": true
+}

@@ -1,0 +1,1043 @@
+/* EVC Local Sync to AI Agent - Plugin Styles */
+
+/* Settings page styles */
+.evc-sync-settings {
+  padding: 1.5rem;
+  max-width: 900px;
+}
+
+.evc-sync-settings h1 {
+  margin-bottom: 0.5rem;
+}
+
+.evc-sync-settings h2 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+  padding-bottom: 0.5rem;
+  padding-left: 0;
+  padding-right: 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.evc-sync-settings .setting-item {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 1rem 1rem;
+}
+
+/* ============================================ */
+/* Settings Header Styles */
+/* ============================================ */
+
+.evc-settings-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.evc-settings-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.evc-settings-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.evc-settings-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.evc-settings-info h2 {
+  margin: 0 0 0.25rem 0;
+  padding: 0;
+  border: none;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.evc-settings-description {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.evc-settings-github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+.evc-settings-github-link:hover {
+  color: var(--text-normal);
+  border-color: var(--text-muted);
+  background: var(--background-secondary-alt);
+}
+
+.evc-settings-github-link svg {
+  flex-shrink: 0;
+}
+
+/* Mappings container */
+.evc-mappings-container {
+  margin-top: 1rem;
+}
+
+.evc-no-mappings {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 1rem;
+  text-align: center;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+/* Mapping table styles */
+.evc-mappings-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9em;
+}
+
+.evc-mappings-table th,
+.evc-mappings-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.evc-mappings-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+}
+
+.evc-mappings-table tbody tr:hover {
+  background: var(--background-secondary-alt);
+}
+
+.evc-mapping-enabled {
+  /* Normal state */
+}
+
+.evc-mapping-disabled {
+  opacity: 0.6;
+}
+
+.evc-mapping-disabled td {
+  color: var(--text-muted);
+}
+
+.evc-path-cell {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evc-path-cell span {
+  cursor: help;
+}
+
+.evc-actions-cell {
+  white-space: nowrap;
+}
+
+/* Button styles */
+.evc-btn {
+  padding: 0.25rem 0.75rem;
+  margin: 0 0.25rem;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.evc-btn:hover {
+  background: var(--background-secondary);
+}
+
+.evc-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.evc-btn-edit {
+  color: var(--text-accent);
+  border-color: var(--text-accent);
+}
+
+.evc-btn-edit:hover {
+  background: var(--text-accent);
+  color: var(--background-primary);
+}
+
+.evc-btn-delete {
+  color: var(--text-error);
+  border-color: var(--text-error);
+}
+
+.evc-btn-delete:hover {
+  background: var(--text-error);
+  color: var(--background-primary);
+}
+
+.evc-btn-cta {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.evc-btn-cta:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.evc-btn-ai {
+  color: var(--text-accent);
+  border-color: var(--text-accent);
+}
+
+.evc-btn-ai:hover {
+  background: var(--text-accent);
+  color: var(--background-primary);
+}
+
+.evc-btn-obs {
+  color: var(--color-purple, #a855f7);
+  border-color: var(--color-purple, #a855f7);
+}
+
+.evc-btn-obs:hover {
+  background: var(--color-purple, #a855f7);
+  color: var(--background-primary);
+}
+
+/* Status indicators */
+.evc-sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.evc-sync-status--enabled {
+  color: var(--text-success);
+}
+
+.evc-sync-status--disabled {
+  color: var(--text-muted);
+}
+
+/* Modal styles */
+.evc-sync-modal {
+  padding: 1rem;
+  min-width: 400px;
+  max-width: 700px;
+}
+
+.evc-sync-modal h2 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.evc-sync-modal .setting-item {
+  border: none;
+  padding: 0.75rem 0;
+}
+
+.evc-modal-description {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+/* Modal buttons */
+.evc-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Error container */
+.evc-error-container {
+  background: var(--background-modifier-error);
+  border: 1px solid var(--text-error);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.evc-error-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: var(--text-error);
+  color: white;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 0.8em;
+  flex-shrink: 0;
+}
+
+.evc-error-text {
+  color: var(--text-error);
+  white-space: pre-wrap;
+}
+
+/* ============================================ */
+/* Dry Run Modal Styles (FR-014) */
+/* ============================================ */
+
+.evc-dry-run-modal {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.evc-dry-run-no-changes {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-success);
+}
+
+.evc-dry-run-no-changes-title {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.evc-dry-run-no-changes-subtitle {
+  color: var(--text-muted);
+}
+
+.evc-dry-run-summary {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.evc-dry-run-summary-text {
+  font-weight: 500;
+}
+
+.evc-dry-run-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.evc-dry-run-badge-copy {
+  background: var(--background-modifier-success);
+  color: var(--text-success);
+}
+
+.evc-dry-run-badge-update {
+  background: var(--background-modifier-border);
+  color: var(--text-accent);
+}
+
+.evc-dry-run-badge-skip {
+  background: var(--background-secondary);
+  color: var(--text-muted);
+}
+
+.evc-dry-run-badge-error {
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+}
+
+.evc-dry-run-results {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.evc-dry-run-section {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.evc-dry-run-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.evc-dry-run-section-title {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+  color: var(--text-normal);
+}
+
+.evc-dry-run-errors {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background: var(--background-modifier-error);
+  border-radius: 4px;
+}
+
+.evc-dry-run-error-item {
+  color: var(--text-error);
+  font-size: 0.9em;
+  padding: 0.25rem 0;
+}
+
+.evc-dry-run-group {
+  margin-bottom: 0.75rem;
+}
+
+.evc-dry-run-group-title {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  font-size: 0.9em;
+}
+
+.evc-dry-run-group-title-obsidian {
+  color: var(--text-accent);
+}
+
+.evc-dry-run-group-title-ai {
+  color: var(--color-purple, #a855f7);
+}
+
+.evc-dry-run-group-title-skip {
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.evc-dry-run-group-title-error {
+  color: var(--text-error);
+}
+
+.evc-dry-run-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.evc-dry-run-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.9em;
+}
+
+.evc-dry-run-icon {
+  width: 1.25rem;
+  text-align: center;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.evc-dry-run-icon-copy {
+  color: var(--text-success);
+}
+
+.evc-dry-run-icon-update {
+  color: var(--text-accent);
+}
+
+.evc-dry-run-icon-skip {
+  color: var(--text-muted);
+}
+
+.evc-dry-run-filename {
+  font-family: var(--font-monospace);
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evc-dry-run-reason {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  flex-shrink: 0;
+}
+
+/* Collapsible styles */
+.evc-collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.evc-collapsible-header:hover {
+  color: var(--text-normal);
+}
+
+.evc-collapsible-icon {
+  width: 1rem;
+  text-align: center;
+  transition: transform 0.15s ease;
+}
+
+.evc-collapsible-content {
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+
+.evc-collapsible-collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* ============================================ */
+/* Log Viewer Modal Styles (FR-031) */
+/* ============================================ */
+
+.evc-log-viewer-modal {
+  min-width: 900px;
+  max-width: 1200px;
+}
+
+/* Override Obsidian modal container width for log viewer */
+.modal:has(.evc-log-viewer-modal) {
+  width: 90vw !important;
+  max-width: 1200px !important;
+}
+
+.modal:has(.evc-log-viewer-modal) .modal-content {
+  width: 100%;
+}
+
+.evc-log-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.evc-log-filter-container,
+.evc-log-search-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.evc-log-filter-label,
+.evc-log-search-label {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.evc-log-search-input {
+  min-width: 200px;
+}
+
+.evc-log-table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.evc-log-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+}
+
+.evc-log-empty-title {
+  font-size: 1.1em;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.evc-log-empty-subtitle {
+  font-size: 0.9em;
+}
+
+.evc-log-stats {
+  padding: 0.5rem 0.75rem;
+  background: var(--background-secondary);
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.evc-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  table-layout: fixed;
+}
+
+.evc-log-table th,
+.evc-log-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.evc-log-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  position: sticky;
+  top: 0;
+}
+
+.evc-log-table tbody tr:hover {
+  background: var(--background-secondary-alt);
+}
+
+.evc-log-row-error {
+  background: var(--background-modifier-error);
+}
+
+.evc-log-row-error:hover {
+  background: var(--background-modifier-error) !important;
+}
+
+.evc-log-cell-timestamp {
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.evc-log-cell-direction {
+  white-space: nowrap;
+}
+
+.evc-log-direction-ai-to-obs {
+  color: var(--text-accent);
+  font-weight: 500;
+}
+
+.evc-log-direction-obs-to-ai {
+  color: var(--color-purple, #a855f7);
+  font-weight: 500;
+}
+
+.evc-log-cell-file {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-monospace);
+}
+
+.evc-log-cell-file span {
+  cursor: help;
+}
+
+.evc-log-cell-action {
+  white-space: nowrap;
+}
+
+.evc-log-action {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+
+.evc-log-action-copy {
+  background: var(--background-modifier-success);
+  color: var(--text-success);
+}
+
+.evc-log-action-update {
+  background: var(--background-secondary);
+  color: var(--text-accent);
+}
+
+.evc-log-action-skip {
+  background: var(--background-secondary);
+  color: var(--text-muted);
+}
+
+.evc-log-action-conflict {
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+}
+
+.evc-log-cell-status {
+  white-space: nowrap;
+}
+
+.evc-log-status-success {
+  color: var(--text-success);
+  font-weight: 500;
+}
+
+.evc-log-status-error {
+  color: var(--text-error);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+/* ============================================ */
+/* Conflict Modal Styles (FR-013) */
+/* ============================================ */
+
+.evc-conflict-modal {
+  min-width: 500px;
+}
+
+.evc-conflict-path {
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.evc-conflict-path-label {
+  color: var(--text-muted);
+}
+
+.evc-conflict-path-value {
+  font-family: var(--font-monospace);
+  background: var(--background-primary);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+.evc-conflict-comparison {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+  margin-bottom: 1rem;
+}
+
+.evc-conflict-version {
+  flex: 1;
+  padding: 1rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  position: relative;
+}
+
+.evc-conflict-version h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+.evc-conflict-version-ai h4 {
+  color: var(--text-accent);
+}
+
+.evc-conflict-version-obs h4 {
+  color: var(--color-purple, #a855f7);
+}
+
+.evc-conflict-version-newer {
+  border-color: var(--text-success);
+  background: var(--background-modifier-success);
+}
+
+.evc-conflict-newer-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.75em;
+  color: var(--text-success);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.evc-conflict-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.9em;
+}
+
+.evc-conflict-details {
+  font-size: 0.9em;
+}
+
+.evc-conflict-detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+}
+
+.evc-conflict-detail-label {
+  color: var(--text-muted);
+}
+
+.evc-conflict-detail-value {
+  font-family: var(--font-monospace);
+}
+
+.evc-conflict-detail-path {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evc-conflict-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+/* ============================================ */
+/* Status bar styles */
+/* ============================================ */
+
+.evc-sync-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+.evc-sync-statusbar:hover {
+  color: var(--text-accent);
+}
+
+/* ============================================ */
+/* Legacy styles (kept for compatibility) */
+/* ============================================ */
+
+.evc-sync-dry-run-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.evc-sync-dry-run-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.evc-sync-dry-run-item--copy {
+  color: var(--text-success);
+}
+
+.evc-sync-dry-run-item--update {
+  color: var(--text-accent);
+}
+
+.evc-sync-dry-run-item--conflict {
+  color: var(--text-error);
+}
+
+.evc-sync-log-viewer {
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.evc-sync-log-entry {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+.evc-sync-log-timestamp {
+  color: var(--text-muted);
+  margin-right: 0.5rem;
+}
+
+.evc-sync-log-direction {
+  font-weight: 600;
+}
+
+.evc-sync-log-direction--ai-to-obs {
+  color: var(--text-accent);
+}
+
+.evc-sync-log-direction--obs-to-ai {
+  color: var(--color-purple);
+}
+
+/* Actions container */
+.evc-actions-container {
+  margin-top: 1rem;
+  padding: 0;
+}
+
+.evc-actions-container .setting-item {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 1rem 1rem;
+  margin: 0;
+}
+
+/* Folder suggester button */
+.evc-mapping-modal .setting-item-control button[aria-label="Browse folders"] {
+  padding: 0.25rem 0.5rem;
+  margin-left: 0.25rem;
+}
+
+/* ============================================ */
+/* Responsive adjustments */
+/* ============================================ */
+
+@media (max-width: 600px) {
+  .evc-mappings-table {
+    font-size: 0.8em;
+  }
+
+  .evc-path-cell {
+    max-width: 100px;
+  }
+
+  .evc-sync-modal {
+    min-width: auto;
+  }
+
+  .evc-log-viewer-modal {
+    min-width: auto;
+  }
+
+  .evc-conflict-comparison {
+    flex-direction: column;
+  }
+
+  .evc-conflict-vs {
+    padding: 0.5rem 0;
+  }
+
+  .evc-log-controls {
+    flex-direction: column;
+  }
+}
+
+/* ============================================ */
+/* Status Bar Styles (FR-022) */
+/* ============================================ */
+
+.evc-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 0 8px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.evc-status-bar:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.evc-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+}
+
+.evc-status-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.evc-status-text {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.evc-status-syncing .evc-status-icon {
+  animation: evc-spin 1s linear infinite;
+}
+
+.evc-status-watching .evc-status-icon {
+  color: var(--text-accent);
+}
+
+.evc-status-success .evc-status-icon {
+  color: var(--color-green);
+}
+
+.evc-status-success .evc-status-text {
+  color: var(--color-green);
+}
+
+.evc-status-error .evc-status-icon {
+  color: var(--color-red);
+}
+
+.evc-status-error .evc-status-text {
+  color: var(--color-red);
+}
+
+@keyframes evc-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================ */
+/* Ribbon Icon Styles (FR-023) */
+/* ============================================ */
+
+.evc-ribbon-icon {
+  /* Inherits Obsidian's default ribbon icon styles */
+}
+
+.evc-ribbon-icon:hover {
+  color: var(--text-accent);
+}

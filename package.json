@@ -1,0 +1,44 @@
+{
+  "name": "obsidian-evc-local-sync",
+  "version": "1.0.0",
+  "description": "Obsidian plugin for bidirectional synchronization of documentation between Obsidian vault and AI development projects",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "lint": "eslint src/**/*.ts"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "sync",
+    "ai",
+    "documentation",
+    "claude",
+    "cursor"
+  ],
+  "author": "EVC Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/entire-vc/evc-local-sync-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/entire-vc/evc-local-sync-plugin/issues"
+  },
+  "homepage": "https://github.com/entire-vc/evc-local-sync-plugin#readme",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.19.12",
+    "eslint": "^8.56.0",
+    "obsidian": "^1.5.3",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0"
+  }
+}

@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output (distributed via releases)
+main.js
+main.js.map
+
+# Internal documentation (not for public)
+docs/
+CLAUDE.md
+
+# Claude Code configuration
+.claude/
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Obsidian test vault data
+data.json
