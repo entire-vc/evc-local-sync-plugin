@@ -426,9 +426,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
       const enabledCell = row.createEl("td");
       const checkbox = enabledCell.createEl("input", { type: "checkbox" });
       checkbox.checked = mapping.syncEnabled;
-      checkbox.addEventListener("change", async () => {
-        await this.plugin.mappingManager.toggleEnabled(mapping.id);
-        this.refreshMappingsTable();
+      checkbox.addEventListener("change", () => {
+        void this.plugin.mappingManager.toggleEnabled(mapping.id).then(() => {
+          this.refreshMappingsTable();
+        });
       });
 
       // Name
@@ -639,12 +640,11 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     input.type = "file";
     input.accept = ".json";
 
-    input.addEventListener("change", async (event) => {
+    input.addEventListener("change", (event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
-      try {
-        const content = await file.text();
+      void file.text().then((content) => {
         const config = JSON.parse(content);
 
         // Validate config structure
@@ -653,32 +653,33 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
         }
 
         // Confirm import
-        const confirmed = await showConfirmation(
+        return showConfirmation(
           this.app,
           "This will replace your current settings and mappings. Continue?",
           "Import"
-        );
-        if (!confirmed) {
-          return;
-        }
+        ).then((confirmed) => {
+          if (!confirmed) {
+            return;
+          }
 
-        // Apply settings
-        const newSettings = {
-          ...this.plugin.settings,
-          ...config.settings,
-          mappings: config.mappings,
-        };
+          // Apply settings
+          const newSettings = {
+            ...this.plugin.settings,
+            ...config.settings,
+            mappings: config.mappings,
+          };
 
-        this.plugin.settings = newSettings;
-        await this.plugin.saveSettings();
+          this.plugin.settings = newSettings;
+          return this.plugin.saveSettings().then(() => {
+            new Notice(`Imported ${config.mappings.length} mapping(s) successfully`);
 
-        new Notice(`Imported ${config.mappings.length} mapping(s) successfully`);
-
-        // Refresh display
-        this.display();
-      } catch (error) {
-        new Notice(`Import failed: ${(error as Error).message}`);
-      }
+            // Refresh display
+            this.display();
+          });
+        });
+      }).catch((error: Error) => {
+        new Notice(`Import failed: ${error.message}`);
+      });
     });
 
     input.click();

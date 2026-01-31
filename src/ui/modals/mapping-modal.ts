@@ -183,8 +183,8 @@ export class MappingModal extends Modal {
       .addDropdown((dropdown) => {
         this.syncDirectionDropdown = dropdown;
         dropdown
-          .addOption("ai-to-obs", "AI Project -> Obsidian")
-          .addOption("obs-to-ai", "Obsidian -> AI Project")
+          .addOption("ai-to-obs", "AI project -> Obsidian")
+          .addOption("obs-to-ai", "Obsidian -> AI project")
           .setValue(this.mapping.syncDirection || "ai-to-obs")
           .onChange((value) => {
             this.mapping.syncDirection = value as SyncDirection;
@@ -198,11 +198,12 @@ export class MappingModal extends Modal {
    * Update visibility of sync direction based on bidirectional toggle
    */
   private updateDirectionVisibility(): void {
-    if (this.directionSetting && this.directionSetting.settingEl) {
+    const settingEl = this.directionSetting?.settingEl;
+    if (settingEl) {
       if (this.mapping.bidirectional) {
-        this.directionSetting.settingEl.addClass("evc-hidden");
+        settingEl.addClass("evc-hidden");
       } else {
-        this.directionSetting.settingEl.removeClass("evc-hidden");
+        settingEl.removeClass("evc-hidden");
       }
     }
   }

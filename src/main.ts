@@ -193,28 +193,28 @@ export default class EVCLocalSyncPlugin extends Plugin {
     // Sync All Projects
     this.addCommand({
       id: "sync-all-projects",
-      name: "Sync All Projects",
+      name: "Sync all projects",
       callback: () => void this.syncAllProjects(),
     });
 
     // Sync Current Project
     this.addCommand({
       id: "sync-current-project",
-      name: "Sync Current Project",
+      name: "Sync current project",
       callback: () => void this.syncCurrentProject(),
     });
 
     // Dry Run
     this.addCommand({
       id: "dry-run",
-      name: "Dry Run (Preview Changes)",
+      name: "Dry run (preview changes)",
       callback: () => void this.dryRun(),
     });
 
     // Open Settings
     this.addCommand({
       id: "open-settings",
-      name: "Open Settings",
+      name: "Open settings",
       callback: () => {
         openPluginSettings(this.app, this.manifest.id);
       },
@@ -223,7 +223,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
     // View Logs
     this.addCommand({
       id: "view-logs",
-      name: "View Sync Logs",
+      name: "View sync logs",
       callback: () => this.viewLogs(),
     });
   }

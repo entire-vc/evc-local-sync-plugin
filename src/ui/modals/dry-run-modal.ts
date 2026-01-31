@@ -360,18 +360,19 @@ export class DryRunModal extends Modal {
         text: "Execute sync",
         cls: "evc-btn evc-btn-cta mod-cta",
       });
-      executeBtn.addEventListener("click", async () => {
+      executeBtn.addEventListener("click", () => {
         executeBtn.disabled = true;
         executeBtn.textContent = "Syncing...";
 
-        try {
-          await this.onConfirm();
-          this.close();
-        } catch (error) {
-          new Notice(`Sync failed: ${(error as Error).message}`);
-          executeBtn.disabled = false;
-          executeBtn.textContent = "Execute sync";
-        }
+        void this.onConfirm()
+          .then(() => {
+            this.close();
+          })
+          .catch((error: Error) => {
+            new Notice(`Sync failed: ${error.message}`);
+            executeBtn.disabled = false;
+            executeBtn.textContent = "Execute sync";
+          });
       });
     }
   }

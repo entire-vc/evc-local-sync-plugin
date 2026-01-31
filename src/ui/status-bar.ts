@@ -122,7 +122,7 @@ export class StatusBarItem {
     // Sync All
     menu.addItem((item) =>
       item
-        .setTitle("Sync All Projects")
+        .setTitle("Sync all projects")
         .setIcon(EVC_ICON_ID)
         .onClick(() => {
           void this.plugin.syncAllProjects();
@@ -132,7 +132,7 @@ export class StatusBarItem {
     // Sync Current
     menu.addItem((item) =>
       item
-        .setTitle("Sync Current Project")
+        .setTitle("Sync current project")
         .setIcon("file-sync")
         .onClick(() => {
           void this.plugin.syncCurrentProject();
@@ -142,7 +142,7 @@ export class StatusBarItem {
     // Dry Run
     menu.addItem((item) =>
       item
-        .setTitle("Dry Run (Preview)")
+        .setTitle("Dry run (preview)")
         .setIcon("eye")
         .onClick(() => {
           void this.plugin.dryRun();
@@ -154,7 +154,7 @@ export class StatusBarItem {
     // View Logs
     menu.addItem((item) =>
       item
-        .setTitle("View Logs")
+        .setTitle("View logs")
         .setIcon("file-text")
         .onClick(() => {
           this.plugin.viewLogs();
