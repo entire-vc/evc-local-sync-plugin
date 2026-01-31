@@ -35,10 +35,10 @@ export class FileWatcher {
   private debounceTimer: NodeJS.Timeout | null = null;
 
   // Excluded patterns (same as sync-engine)
+  // Note: configDir is added dynamically via shouldIgnore method
   private readonly EXCLUDED_DIRS = [
     "node_modules",
     ".git",
-    ".obsidian",
     ".DS_Store",
     ".space",
     "__pycache__",
@@ -74,7 +74,7 @@ export class FileWatcher {
   /**
    * Start watching all enabled mappings
    */
-  async start(): Promise<void> {
+  start(): void {
     if (this.isWatching) {
       return;
     }
@@ -86,7 +86,7 @@ export class FileWatcher {
     }
 
     for (const mapping of enabledMappings) {
-      await this.watchMapping(mapping);
+      this.watchMapping(mapping);
     }
 
     this.isWatching = true;
@@ -117,22 +117,23 @@ export class FileWatcher {
    */
   async restart(): Promise<void> {
     await this.stop();
-    await this.start();
+    this.start();
   }
 
   /**
    * Watch a single mapping (both AI and Obsidian sides)
    */
-  private async watchMapping(mapping: ProjectMapping): Promise<void> {
+  private watchMapping(mapping: ProjectMapping): void {
     // Watch AI project docs folder
     const aiDocsPath = this.getAiDocsPath(mapping);
-    await this.watchDirectory(aiDocsPath, mapping, "ai");
+    this.watchDirectory(aiDocsPath, mapping, "ai");
 
     // Watch Obsidian docs folder
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const vaultBasePath = (this.app.vault.adapter as any).basePath || "";
     const obsDocsPath = this.getObsidianDocsPath(mapping);
     const fullObsDocsPath = path.join(vaultBasePath, obsDocsPath);
-    await this.watchDirectory(fullObsDocsPath, mapping, "obsidian");
+    this.watchDirectory(fullObsDocsPath, mapping, "obsidian");
   }
 
   /**
@@ -159,11 +160,11 @@ export class FileWatcher {
   /**
    * Watch a single directory
    */
-  private async watchDirectory(
+  private watchDirectory(
     dirPath: string,
     mapping: ProjectMapping,
     source: "ai" | "obsidian"
-  ): Promise<void> {
+  ): void {
     const watcherId = `${mapping.id}-${source}`;
 
     // Skip if already watching
@@ -212,11 +213,11 @@ export class FileWatcher {
       });
 
       watcher.on("ready", () => {
-        console.log(`EVC Watcher: Ready - watching ${dirPath}`);
+        console.debug(`EVC Watcher: Ready - watching ${dirPath}`);
       });
 
       this.watchers.set(watcherId, watcher);
-      console.log(`EVC Watcher: Started watching ${dirPath} for mapping "${mapping.name}" (${source})`);
+      console.debug(`EVC Watcher: Started watching ${dirPath} for mapping "${mapping.name}" (${source})`);
     } catch (error) {
       console.error(`EVC Watcher: Failed to watch ${dirPath}:`, error);
     }
@@ -232,7 +233,7 @@ export class FileWatcher {
     source: "ai" | "obsidian",
     basePath: string
   ): void {
-    console.log(`EVC Watcher: File ${type} detected: ${relativePath} (source: ${source})`);
+    console.debug(`EVC Watcher: File ${type} detected: ${relativePath} (source: ${source})`);
 
     const absolutePath = path.join(basePath, relativePath);
     const eventKey = `${mapping.id}:${source}:${relativePath}`;
@@ -285,10 +286,15 @@ export class FileWatcher {
    */
   private shouldIgnore(filePath: string): boolean {
     const parts = filePath.split(path.sep);
+    const configDir = this.app.vault.configDir;
 
     // Check excluded directories
     for (const part of parts) {
       if (this.EXCLUDED_DIRS.includes(part)) {
+        return true;
+      }
+      // Check config directory dynamically
+      if (part === configDir) {
         return true;
       }
     }

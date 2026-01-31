@@ -1,7 +1,6 @@
 import { App, TFile, TFolder, normalizePath } from "obsidian";
 import type { ProjectMapping, EVCLocalSyncSettings } from "./settings";
 import { ConflictResolver, type ConflictInfo, type ResolutionDecision } from "./conflict-resolver";
-import { MappingManager } from "./mapping-manager";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -77,11 +76,11 @@ export interface DryRunResult {
 
 /**
  * Hardcoded exclusion patterns (FR-011)
+ * Note: .obsidian is added dynamically from app.vault.configDir
  */
 const HARDCODED_EXCLUSIONS = [
   "node_modules",
   ".git",
-  ".obsidian",
   ".DS_Store",
   ".space",
 ];
@@ -238,7 +237,7 @@ export class SyncEngine {
             conflicts.push(conflictInfo);
 
             // Get resolution - use modal callback for "always-ask" strategy
-            let resolution = await this.conflictResolver.resolve(conflictInfo);
+            let resolution = this.conflictResolver.resolve(conflictInfo);
 
             if (this.settings.conflictResolution === "always-ask" && this.conflictModalCallback) {
               const userDecision = await this.conflictModalCallback(conflictInfo);
@@ -462,7 +461,7 @@ export class SyncEngine {
       }
 
       // Get file lists from both sides
-      const aiFiles = await this.getFileList(aiDocsPath, false);
+      const aiFiles = this.getFileList(aiDocsPath, false);
       const obsFiles = await this.getObsidianFileList(obsDocsPath);
 
       // Create lookup maps
@@ -550,7 +549,7 @@ export class SyncEngine {
   /**
    * Get file list from external directory (AI project)
    */
-  private async getFileList(dirPath: string, _isObsidian: boolean): Promise<FileInfo[]> {
+  private getFileList(dirPath: string, _isObsidian: boolean): FileInfo[] {
     const files: FileInfo[] = [];
     const followSymlinks = this.settings.followSymlinks;
 
@@ -642,7 +641,8 @@ export class SyncEngine {
 
             if (stats) {
               // Get absolute path for Obsidian files
-              const vaultBasePath = (this.app.vault.adapter as any).basePath || "";
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const vaultBasePath = (this.app.vault.adapter as any).basePath as string || "";
               const absolutePath = path.join(vaultBasePath, child.path);
 
               files.push({
@@ -694,6 +694,12 @@ export class SyncEngine {
       if (pathSegment === exclusion || pathSegment.startsWith(exclusion + "/")) {
         return true;
       }
+    }
+
+    // Check config directory (dynamically from vault)
+    const configDir = this.app.vault.configDir;
+    if (pathSegment === configDir || pathSegment.startsWith(configDir + "/")) {
+      return true;
     }
 
     // Check user-defined exclusions
@@ -756,7 +762,8 @@ export class SyncEngine {
     }
 
     // Preserve source file mtime on target using fs directly
-    const vaultBasePath = (this.app.vault.adapter as any).basePath || "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vaultBasePath = (this.app.vault.adapter as any).basePath as string || "";
     const absoluteTargetPath = path.join(vaultBasePath, targetPath);
     if (fs.existsSync(absoluteTargetPath)) {
       fs.utimesSync(absoluteTargetPath, sourceMtime, sourceMtime);
@@ -785,8 +792,9 @@ export class SyncEngine {
     }
 
     // Read from Obsidian vault using the abstract file path
-    const vaultBasePath = (this.app.vault.adapter as any).basePath || "";
-    const vaultPath = sourcePath.replace(vaultBasePath, "").replace(/^[\/\\]/, "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vaultBasePath = (this.app.vault.adapter as any).basePath as string || "";
+    const vaultPath = sourcePath.replace(vaultBasePath, "").replace(/^[/\\]/, "");
     const normalizedVaultPath = normalizePath(vaultPath);
 
     const file = this.app.vault.getAbstractFileByPath(normalizedVaultPath);

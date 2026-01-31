@@ -125,9 +125,8 @@ export class MappingModal extends Modal {
       cls: "evc-modal-description",
     });
 
-    // Error container
-    this.errorContainer = contentEl.createDiv({ cls: "evc-error-container" });
-    this.errorContainer.style.display = "none";
+    // Error container (hidden by default via CSS)
+    this.errorContainer = contentEl.createDiv({ cls: "evc-error-container evc-hidden" });
 
     // Form fields
     this.createFormFields(contentEl);
@@ -155,32 +154,21 @@ export class MappingModal extends Modal {
       });
 
     // AI Project Path
-    const aiPathSetting = new Setting(containerEl)
-      .setName("AI Project Path")
+    new Setting(containerEl)
+      .setName("AI project path")
       .setDesc(
         "Full path to the AI project folder (e.g., ~/DevProjects/my-project)"
-      );
-
-    aiPathSetting.addText((text) => {
-      this.aiPathInput = text;
-      text
-        .setPlaceholder("~/DevProjects/my-project")
-        .setValue(this.mapping.aiPath)
-        .onChange((value) => {
-          this.mapping.aiPath = value;
-        });
-      text.inputEl.style.width = "250px";
-    });
-
-    // Add folder picker button for AI path
-    aiPathSetting.addButton((button) => {
-      button
-        .setIcon("folder")
-        .setTooltip("Browse folders")
-        .onClick(async () => {
-          await this.openFolderPicker();
-        });
-    });
+      )
+      .addText((text) => {
+        this.aiPathInput = text;
+        text
+          .setPlaceholder("~/DevProjects/my-project")
+          .setValue(this.mapping.aiPath)
+          .onChange((value) => {
+            this.mapping.aiPath = value;
+          });
+        text.inputEl.addClass("evc-input-wide");
+      });
 
     // Obsidian Folder Path
     const obsPathSetting = new Setting(containerEl)
@@ -195,7 +183,7 @@ export class MappingModal extends Modal {
         .onChange((value) => {
           this.mapping.obsidianPath = value;
         });
-      text.inputEl.style.width = "250px";
+      text.inputEl.addClass("evc-input-wide");
     });
 
     // Add folder suggester button
@@ -271,57 +259,15 @@ export class MappingModal extends Modal {
   }
 
   /**
-   * Open system folder picker dialog for AI project path
-   */
-  private async openFolderPicker(): Promise<void> {
-    try {
-      // In Obsidian, we need to access Electron's dialog via require
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { remote } = require("@electron/remote") as typeof import("@electron/remote");
-
-      const result = await remote.dialog.showOpenDialog({
-        properties: ["openDirectory"],
-        title: "Select AI Project Folder",
-      });
-
-      if (!result.canceled && result.filePaths.length > 0) {
-        this.mapping.aiPath = result.filePaths[0];
-        this.aiPathInput.setValue(result.filePaths[0]);
-      }
-    } catch {
-      // Fallback: Try alternative Electron access methods
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
-        const electron = require("electron") as any;
-        const dialog = electron.remote?.dialog;
-
-        if (dialog) {
-          const result = await dialog.showOpenDialog({
-            properties: ["openDirectory"],
-            title: "Select AI Project Folder",
-          });
-
-          if (!result.canceled && result.filePaths.length > 0) {
-            this.mapping.aiPath = result.filePaths[0];
-            this.aiPathInput.setValue(result.filePaths[0]);
-          }
-        } else {
-          new Notice("Folder picker is not available. Please enter the path manually.");
-        }
-      } catch {
-        new Notice("Folder picker is not available. Please enter the path manually.");
-      }
-    }
-  }
-
-  /**
    * Update visibility of sync direction based on bidirectional toggle
    */
   private updateDirectionVisibility(): void {
     if (this.directionSetting && this.directionSetting.settingEl) {
-      this.directionSetting.settingEl.style.display = this.mapping.bidirectional
-        ? "none"
-        : "flex";
+      if (this.mapping.bidirectional) {
+        this.directionSetting.settingEl.addClass("evc-hidden");
+      } else {
+        this.directionSetting.settingEl.removeClass("evc-hidden");
+      }
     }
   }
 
@@ -408,7 +354,7 @@ export class MappingModal extends Modal {
    */
   private showError(message: string): void {
     this.errorContainer.empty();
-    this.errorContainer.style.display = "block";
+    this.errorContainer.removeClass("evc-hidden");
 
     const errorIcon = this.errorContainer.createSpan({ cls: "evc-error-icon" });
     errorIcon.textContent = "!";
@@ -421,7 +367,7 @@ export class MappingModal extends Modal {
    * Hide error message
    */
   private hideError(): void {
-    this.errorContainer.style.display = "none";
+    this.errorContainer.addClass("evc-hidden");
     this.errorContainer.empty();
   }
 

@@ -1,5 +1,18 @@
 /* EVC Local Sync to AI Agent - Plugin Styles */
 
+/* Utility classes */
+.evc-hidden {
+  display: none !important;
+}
+
+.evc-input-wide {
+  width: 250px;
+}
+
+.evc-cursor-help {
+  cursor: help;
+}
+
 /* Settings page styles */
 .evc-sync-settings {
   padding: 1.5rem;
@@ -63,13 +76,28 @@
   min-width: 0;
 }
 
-.evc-settings-info h2 {
+.evc-settings-title {
   margin: 0 0 0.25rem 0;
   padding: 0;
   border: none;
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--text-normal);
+}
+
+.evc-settings-logo {
+  border-radius: 8px;
+}
+
+.evc-github-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+}
+
+.evc-github-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .evc-settings-description {

@@ -1,5 +1,6 @@
 import { App, Modal, DropdownComponent, TextComponent, Notice } from "obsidian";
 import type { SyncLogger, LogEntry } from "../../logger";
+import { showConfirmation } from "./confirmation-modal";
 
 /**
  * Filter options for log entries
@@ -275,15 +276,21 @@ export class LogViewerModal extends Modal {
 
     // Clear Logs button
     const clearBtn = buttonsEl.createEl("button", {
-      text: "Clear Logs",
+      text: "Clear logs",
       cls: "evc-btn evc-btn-delete",
     });
     clearBtn.addEventListener("click", () => {
-      if (confirm("Are you sure you want to clear all sync logs? This cannot be undone.")) {
-        this.logger.clear();
-        this.renderLogTable();
-        new Notice("Sync logs cleared");
-      }
+      void showConfirmation(
+        this.app,
+        "Are you sure you want to clear all sync logs? This cannot be undone.",
+        "Clear logs"
+      ).then((confirmed) => {
+        if (confirmed) {
+          this.logger.clear();
+          this.renderLogTable();
+          new Notice("Sync logs cleared");
+        }
+      });
     });
 
     // Export CSV button
@@ -328,7 +335,7 @@ export class LogViewerModal extends Modal {
       "download",
       `evc-sync-logs-${new Date().toISOString().slice(0, 10)}.csv`
     );
-    link.style.display = "none";
+    link.addClass("evc-hidden");
 
     document.body.appendChild(link);
     link.click();

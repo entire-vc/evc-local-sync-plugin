@@ -99,24 +99,24 @@ export default class EVCLocalSyncPlugin extends Plugin {
     if (this.settings.syncOnStartup && this.settings.syncMode !== "manual") {
       // Delay to allow Obsidian to fully load
       setTimeout(() => {
-        this.syncAllProjects();
+        void this.syncAllProjects();
       }, 2000);
     }
   }
 
-  async onunload(): Promise<void> {
+  onunload(): void {
     // Stop scheduled sync
     this.stopScheduledSync();
 
     // Stop file watcher
-    await this.fileWatcher?.stop();
+    void this.fileWatcher?.stop();
 
     // Destroy UI elements
     this.statusBar?.destroy();
     this.ribbonIcon?.destroy();
 
     // Save logger state
-    await this.logger?.save();
+    void this.logger?.save();
   }
 
   /**
@@ -127,12 +127,12 @@ export default class EVCLocalSyncPlugin extends Plugin {
 
     const intervalMs = this.settings.scheduledIntervalMinutes * 60 * 1000;
 
-    this.scheduledSyncInterval = setInterval(async () => {
-      console.log("EVC Sync: Running scheduled sync...");
-      await this.syncAllProjects();
+    this.scheduledSyncInterval = setInterval(() => {
+      console.debug("EVC Sync: Running scheduled sync...");
+      void this.syncAllProjects();
     }, intervalMs);
 
-    console.log(`EVC Sync: Scheduled sync started (every ${this.settings.scheduledIntervalMinutes} minutes)`);
+    console.debug(`EVC Sync: Scheduled sync started (every ${this.settings.scheduledIntervalMinutes} minutes)`);
   }
 
   /**
@@ -142,7 +142,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
     if (this.scheduledSyncInterval) {
       clearInterval(this.scheduledSyncInterval);
       this.scheduledSyncInterval = null;
-      console.log("EVC Sync: Scheduled sync stopped");
+      console.debug("EVC Sync: Scheduled sync stopped");
     }
   }
 
@@ -172,7 +172,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
         this.fileWatcher.start();
         this.statusBar?.setStatus("watching");
       } else if (this.settings.syncMode !== "on-change" && this.fileWatcher.isActive()) {
-        this.fileWatcher.stop();
+        void this.fileWatcher.stop();
         this.statusBar?.setStatus("idle");
       }
     }
@@ -216,7 +216,8 @@ export default class EVCLocalSyncPlugin extends Plugin {
       name: "Open Settings",
       callback: () => {
         // Open plugin settings tab
-        const setting = (this.app as any).setting;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const setting = (this.app as any).setting as { open: () => void; openTabById: (id: string) => void } | undefined;
         if (setting) {
           setting.open();
           setting.openTabById(this.manifest.id);

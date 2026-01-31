@@ -1,4 +1,4 @@
-import { App, normalizePath } from "obsidian";
+import { App, normalizePath, TFolder, TFile } from "obsidian";
 import type { ProjectMapping, EVCLocalSyncSettings } from "./settings";
 import * as fs from "fs";
 import * as path from "path";
@@ -171,7 +171,7 @@ export class MappingManager {
     if (!mapping.aiPath || mapping.aiPath.trim().length === 0) {
       errors.push("AI project path is required");
     } else {
-      const aiPathValid = await this.validateExternalPath(mapping.aiPath);
+      const aiPathValid = this.validateExternalPath(mapping.aiPath);
       if (!aiPathValid.exists) {
         errors.push(`AI project path does not exist: ${mapping.aiPath}`);
       } else if (!aiPathValid.isDirectory) {
@@ -226,9 +226,9 @@ export class MappingManager {
   /**
    * Validate an external filesystem path (FR-003)
    */
-  private async validateExternalPath(
+  private validateExternalPath(
     externalPath: string
-  ): Promise<{ exists: boolean; isDirectory: boolean }> {
+  ): { exists: boolean; isDirectory: boolean } {
     try {
       // Expand ~ to home directory
       const expandedPath = externalPath.replace(/^~/, process.env.HOME || "");
@@ -320,11 +320,11 @@ export class MappingManager {
   /**
    * Get statistics for a mapping
    */
-  async getMappingStats(mapping: ProjectMapping): Promise<{
+  getMappingStats(mapping: ProjectMapping): {
     aiFileCount: number;
     obsidianFileCount: number;
     lastSync?: Date;
-  }> {
+  } {
     let aiFileCount = 0;
     let obsidianFileCount = 0;
 
@@ -348,7 +348,7 @@ export class MappingManager {
       const folder = this.app.vault.getAbstractFileByPath(obsDocsPath);
       if (folder && "children" in folder) {
         obsidianFileCount = this.countVaultFiles(
-          folder as any,
+          folder as TFolder,
           this.settings.fileTypes
         );
       }
@@ -406,16 +406,16 @@ export class MappingManager {
    * Count files in Obsidian vault folder
    */
   private countVaultFiles(
-    folder: { children: any[] },
+    folder: TFolder,
     fileTypes: string[]
   ): number {
     let count = 0;
 
     for (const child of folder.children) {
-      if ("children" in child) {
+      if (child instanceof TFolder) {
         // It's a folder
         count += this.countVaultFiles(child, fileTypes);
-      } else if ("extension" in child) {
+      } else if (child instanceof TFile) {
         // It's a file
         const ext = "." + child.extension;
         if (fileTypes.includes(ext)) {

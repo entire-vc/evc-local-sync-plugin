@@ -63,7 +63,7 @@ export class ConflictResolver {
   /**
    * Resolve a conflict based on the current strategy
    */
-  async resolve(conflict: ConflictInfo): Promise<ResolutionResult> {
+  resolve(conflict: ConflictInfo): ResolutionResult {
     switch (this.strategy) {
       case "newer-wins":
         return this.resolveNewerWins(conflict);
@@ -86,11 +86,11 @@ export class ConflictResolver {
   /**
    * Resolve multiple conflicts
    */
-  async resolveAll(conflicts: ConflictInfo[]): Promise<ResolutionResult[]> {
+  resolveAll(conflicts: ConflictInfo[]): ResolutionResult[] {
     const results: ResolutionResult[] = [];
 
     for (const conflict of conflicts) {
-      const result = await this.resolve(conflict);
+      const result = this.resolve(conflict);
       results.push(result);
     }
 

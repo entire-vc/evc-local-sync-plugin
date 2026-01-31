@@ -166,7 +166,8 @@ export class StatusBarItem {
         .setTitle("Settings")
         .setIcon("settings")
         .onClick(() => {
-          const setting = (this.plugin.app as any).setting;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const setting = (this.plugin.app as any).setting as { open: () => void; openTabById: (id: string) => void } | undefined;
           if (setting) {
             setting.open();
             setting.openTabById(this.plugin.manifest.id);

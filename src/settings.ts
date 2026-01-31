@@ -1,7 +1,10 @@
-import { App, PluginSettingTab, Setting, Notice, ButtonComponent } from "obsidian";
+import { App, PluginSettingTab, Setting, Notice, ButtonComponent, setIcon } from "obsidian";
 import type EVCLocalSyncPlugin from "./main";
 import { MappingModal } from "./ui/modals/mapping-modal";
+import { showConfirmation } from "./ui/modals/confirmation-modal";
 import { EVC_LOGO_BASE64 } from "./logo";
+import * as fs from "fs";
+import * as path from "path";
 
 /**
  * Sync mode options
@@ -128,14 +131,14 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
         width: "48",
         height: "48",
       },
+      cls: "evc-settings-logo",
     });
-    logoImg.style.borderRadius = "8px";
 
     // Info container
     const infoContainer = header.createDiv({ cls: "evc-settings-info" });
 
     // Title
-    infoContainer.createEl("h2", { text: "EVC Local Sync to AI Agent" });
+    infoContainer.createEl("div", { text: "EVC Local Sync to AI Agent", cls: "evc-settings-title" });
 
     // Description
     infoContainer.createEl("p", {
@@ -146,20 +149,22 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     // GitHub link - placed directly in header (right side, at logo level)
     const githubLink = header.createEl("a", {
       cls: "evc-settings-github-link",
-      href: "https://github.com/entire-vc/evc-local-sync",
+      href: "https://github.com/entire-vc/evc-local-sync-plugin",
     });
     githubLink.setAttribute("target", "_blank");
-    githubLink.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-    </svg>
-    <span>GitHub</span>`;
+
+    // Create GitHub icon using setIcon
+    const iconSpan = githubLink.createSpan({ cls: "evc-github-icon" });
+    setIcon(iconSpan, "github");
+
+    githubLink.createSpan({ text: "GitHub" });
   }
 
   /**
    * Display General Settings section
    */
   private displayGeneralSettings(containerEl: HTMLElement): void {
-    containerEl.createEl("h2", { text: "General Settings" });
+    new Setting(containerEl).setName("General settings").setHeading();
 
     // Sync Mode
     new Setting(containerEl)
@@ -314,7 +319,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    * Display File Types section
    */
   private displayFileTypesSettings(containerEl: HTMLElement): void {
-    containerEl.createEl("h2", { text: "File Types" });
+    new Setting(containerEl).setName("File types").setHeading();
 
     // File Extensions
     new Setting(containerEl)
@@ -357,7 +362,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    * Display Project Mappings section
    */
   private displayMappingsSettings(containerEl: HTMLElement): void {
-    containerEl.createEl("h2", { text: "Project Mappings" });
+    new Setting(containerEl).setName("Project mappings").setHeading();
 
     // Add Mapping button
     new Setting(containerEl)
@@ -467,12 +472,18 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
         text: "Delete",
         cls: "evc-btn evc-btn-delete",
       });
-      deleteBtn.addEventListener("click", async () => {
-        if (confirm(`Delete mapping "${mapping.name}"?`)) {
-          await this.plugin.mappingManager.delete(mapping.id);
-          this.refreshMappingsTable();
-          new Notice(`Mapping "${mapping.name}" deleted`);
-        }
+      deleteBtn.addEventListener("click", () => {
+        void showConfirmation(
+          this.app,
+          `Delete mapping "${mapping.name}"?`,
+          "Delete"
+        ).then(async (confirmed) => {
+          if (confirmed) {
+            await this.plugin.mappingManager.delete(mapping.id);
+            this.refreshMappingsTable();
+            new Notice(`Mapping "${mapping.name}" deleted`);
+          }
+        });
       });
     }
   }
@@ -520,7 +531,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    * Display Actions section
    */
   private displayActionsSection(containerEl: HTMLElement): void {
-    containerEl.createEl("h2", { text: "Actions" });
+    new Setting(containerEl).setName("Actions").setHeading();
 
     const actionsContainer = containerEl.createDiv({ cls: "evc-actions-container" });
 
@@ -558,7 +569,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
       );
 
     // Configuration Management section
-    containerEl.createEl("h2", { text: "Configuration" });
+    new Setting(containerEl).setName("Configuration").setHeading();
 
     const configContainer = containerEl.createDiv({ cls: "evc-config-container" });
 
@@ -643,7 +654,12 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
         }
 
         // Confirm import
-        if (!confirm("This will replace your current settings and mappings. Continue?")) {
+        const confirmed = await showConfirmation(
+          this.app,
+          "This will replace your current settings and mappings. Continue?",
+          "Import"
+        );
+        if (!confirmed) {
           return;
         }
 
@@ -672,58 +688,58 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
   /**
    * Offer to clean up backup files when backups are disabled
    */
-  private async offerBackupCleanup(): Promise<void> {
-    const shouldCleanup = confirm(
-      "Delete existing backup files?\n\nThis will remove all .backup-* files in synced folders."
-    );
+  private offerBackupCleanup(): void {
+    void showConfirmation(
+      this.app,
+      "Delete existing backup files? This will remove all .backup-* files in synced folders.",
+      "Delete backups"
+    ).then(async (shouldCleanup) => {
+      if (!shouldCleanup) {
+        return;
+      }
 
-    if (!shouldCleanup) {
-      return;
-    }
+      let deletedCount = 0;
 
-    let deletedCount = 0;
+      for (const mapping of this.plugin.settings.mappings) {
+        // Clean up Obsidian backups
+        const obsPath = mapping.obsidianPath;
+        const obsFolder = this.app.vault.getAbstractFileByPath(obsPath);
 
-    for (const mapping of this.plugin.settings.mappings) {
-      // Clean up Obsidian backups
-      const obsPath = mapping.obsidianPath;
-      const obsFolder = this.app.vault.getAbstractFileByPath(obsPath);
-
-      if (obsFolder) {
-        const files = this.app.vault.getFiles();
-        for (const file of files) {
-          if (file.path.startsWith(obsPath) && file.path.includes(".backup-")) {
-            await this.app.vault.delete(file);
-            deletedCount++;
+        if (obsFolder) {
+          const files = this.app.vault.getFiles();
+          for (const file of files) {
+            if (file.path.startsWith(obsPath) && file.path.includes(".backup-")) {
+              await this.app.vault.delete(file);
+              deletedCount++;
+            }
           }
+        }
+
+        // Clean up AI project backups
+        const aiPath = mapping.aiPath.replace(/^~/, process.env.HOME || "");
+
+        if (fs.existsSync(aiPath)) {
+          const walkAndDelete = (dir: string): void => {
+            try {
+              const entries = fs.readdirSync(dir, { withFileTypes: true });
+              for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                  walkAndDelete(fullPath);
+                } else if (entry.name.includes(".backup-")) {
+                  fs.unlinkSync(fullPath);
+                  deletedCount++;
+                }
+              }
+            } catch {
+              // Ignore errors
+            }
+          };
+          walkAndDelete(aiPath);
         }
       }
 
-      // Clean up AI project backups
-      const fs = require("fs");
-      const path = require("path");
-      const aiPath = mapping.aiPath.replace(/^~/, process.env.HOME || "");
-
-      if (fs.existsSync(aiPath)) {
-        const walkAndDelete = (dir: string): void => {
-          try {
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            for (const entry of entries) {
-              const fullPath = path.join(dir, entry.name);
-              if (entry.isDirectory()) {
-                walkAndDelete(fullPath);
-              } else if (entry.name.includes(".backup-")) {
-                fs.unlinkSync(fullPath);
-                deletedCount++;
-              }
-            }
-          } catch {
-            // Ignore errors
-          }
-        };
-        walkAndDelete(aiPath);
-      }
-    }
-
-    new Notice(`Deleted ${deletedCount} backup file(s)`);
+      new Notice(`Deleted ${deletedCount} backup file(s)`);
+    });
   }
 }

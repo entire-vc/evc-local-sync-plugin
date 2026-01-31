@@ -163,12 +163,11 @@ export class ConflictModal extends Modal {
       text: "Path:",
       cls: "evc-conflict-detail-label",
     });
-    const pathSpan = pathRow.createEl("span", {
+    pathRow.createEl("span", {
       text: this.truncatePath(info.path),
-      cls: "evc-conflict-detail-value evc-conflict-detail-path",
+      cls: "evc-conflict-detail-value evc-conflict-detail-path evc-cursor-help",
       attr: { title: info.path },
     });
-    pathSpan.style.cursor = "help";
   }
 
   /**

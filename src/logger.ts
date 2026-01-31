@@ -307,7 +307,7 @@ export class SyncLogger {
       // Apply rotation after loading
       this.rotate();
 
-      console.log(`EVC Sync Logger: Loaded ${this.entries.length} log entries`);
+      console.debug(`EVC Sync Logger: Loaded ${this.entries.length} log entries`);
     } catch (error) {
       console.warn("EVC Sync Logger: Failed to load logs, starting fresh", error);
       this.entries = [];
@@ -362,7 +362,7 @@ export class SyncLogger {
    * Get plugin data directory path
    */
   private getPluginDataDir(): string {
-    return `.obsidian/plugins/evc-local-sync`;
+    return `${this.app.vault.configDir}/plugins/evc-local-sync`;
   }
 
   /**
