@@ -6,57 +6,9 @@ import {
   TextComponent,
   DropdownComponent,
   ToggleComponent,
-  TFolder,
-  FuzzySuggestModal,
 } from "obsidian";
 import type { ProjectMapping, SyncDirection } from "../../settings";
 import type EVCLocalSyncPlugin from "../../main";
-
-/**
- * Folder suggester modal for Obsidian paths
- */
-class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
-  private folders: TFolder[];
-  private onChoose: (folder: TFolder) => void;
-
-  constructor(app: App, folders: TFolder[], onChoose: (folder: TFolder) => void) {
-    super(app);
-    this.folders = folders;
-    this.onChoose = onChoose;
-  }
-
-  getItems(): TFolder[] {
-    return this.folders;
-  }
-
-  getItemText(item: TFolder): string {
-    return item.path;
-  }
-
-  onChooseItem(item: TFolder): void {
-    this.onChoose(item);
-  }
-}
-
-/**
- * Get all folders in the vault
- */
-function getAllFolders(app: App): TFolder[] {
-  const folders: TFolder[] = [];
-  const rootFolder = app.vault.getRoot();
-
-  function collectFolders(folder: TFolder): void {
-    folders.push(folder);
-    for (const child of folder.children) {
-      if (child instanceof TFolder) {
-        collectFolders(child);
-      }
-    }
-  }
-
-  collectFolders(rootFolder);
-  return folders;
-}
 
 /**
  * Modal options
@@ -116,7 +68,7 @@ export class MappingModal extends Modal {
 
     // Title
     contentEl.createEl("h2", {
-      text: this.isEdit ? "Edit Project Mapping" : "Add Project Mapping",
+      text: this.isEdit ? "Edit project mapping" : "Add project mapping",
     });
 
     // Description
@@ -141,7 +93,7 @@ export class MappingModal extends Modal {
   private createFormFields(containerEl: HTMLElement): void {
     // Name
     new Setting(containerEl)
-      .setName("Mapping Name")
+      .setName("Mapping name")
       .setDesc("A friendly name for this mapping (e.g., 'My Project')")
       .addText((text) => {
         this.nameInput = text;
@@ -171,39 +123,23 @@ export class MappingModal extends Modal {
       });
 
     // Obsidian Folder Path
-    const obsPathSetting = new Setting(containerEl)
-      .setName("Obsidian Folder")
-      .setDesc("Path within your Obsidian vault");
-
-    obsPathSetting.addText((text) => {
-      this.obsidianPathInput = text;
-      text
-        .setPlaceholder("Projects/MyProject")
-        .setValue(this.mapping.obsidianPath)
-        .onChange((value) => {
-          this.mapping.obsidianPath = value;
-        });
-      text.inputEl.addClass("evc-input-wide");
-    });
-
-    // Add folder suggester button
-    obsPathSetting.addButton((button) => {
-      button
-        .setIcon("folder")
-        .setTooltip("Browse folders")
-        .onClick(() => {
-          const folders = getAllFolders(this.app);
-          const modal = new FolderSuggestModal(this.app, folders, (folder) => {
-            this.mapping.obsidianPath = folder.path;
-            this.obsidianPathInput.setValue(folder.path);
+    new Setting(containerEl)
+      .setName("Obsidian folder")
+      .setDesc("Path within your Obsidian vault")
+      .addText((text) => {
+        this.obsidianPathInput = text;
+        text
+          .setPlaceholder("Projects/MyProject")
+          .setValue(this.mapping.obsidianPath)
+          .onChange((value) => {
+            this.mapping.obsidianPath = value;
           });
-          modal.open();
-        });
-    });
+        text.inputEl.addClass("evc-input-wide");
+      });
 
     // Docs Subdirectory
     new Setting(containerEl)
-      .setName("Docs Subdirectory")
+      .setName("Docs subdirectory")
       .setDesc(
         'Subdirectory for docs within both paths (e.g., "docs"). Leave empty to sync from root.'
       )
@@ -219,7 +155,7 @@ export class MappingModal extends Modal {
 
     // Enable Sync toggle
     new Setting(containerEl)
-      .setName("Enable Sync")
+      .setName("Enable sync")
       .setDesc("Whether this mapping is active for synchronization")
       .addToggle((toggle) => {
         this.syncEnabledToggle = toggle;
@@ -230,7 +166,7 @@ export class MappingModal extends Modal {
 
     // Bidirectional toggle
     new Setting(containerEl)
-      .setName("Bidirectional Sync")
+      .setName("Bidirectional sync")
       .setDesc("Sync in both directions (AI <-> Obsidian)")
       .addToggle((toggle) => {
         this.bidirectionalToggle = toggle;
@@ -242,7 +178,7 @@ export class MappingModal extends Modal {
 
     // Sync Direction (shown only if not bidirectional)
     this.directionSetting = new Setting(containerEl)
-      .setName("Sync Direction")
+      .setName("Sync direction")
       .setDesc("Direction to sync files (when not bidirectional)")
       .addDropdown((dropdown) => {
         this.syncDirectionDropdown = dropdown;
@@ -288,11 +224,11 @@ export class MappingModal extends Modal {
 
     // Save button
     const saveBtn = buttonContainer.createEl("button", {
-      text: this.isEdit ? "Save Changes" : "Add Mapping",
+      text: this.isEdit ? "Save changes" : "Add mapping",
       cls: "evc-btn evc-btn-cta mod-cta",
     });
-    saveBtn.addEventListener("click", async () => {
-      await this.handleSave();
+    saveBtn.addEventListener("click", () => {
+      void this.handleSave();
     });
   }
 
@@ -329,7 +265,7 @@ export class MappingModal extends Modal {
 
     // Validate paths using MappingManager
     try {
-      const validation = await this.plugin.mappingManager.validate(this.mapping);
+      const validation = this.plugin.mappingManager.validate(this.mapping);
 
       if (!validation.valid) {
         this.showError(validation.errors.join("\n"));

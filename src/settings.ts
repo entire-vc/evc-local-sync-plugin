@@ -75,7 +75,6 @@ export const DEFAULT_SETTINGS: EVCLocalSyncSettings = {
   excludePatterns: [
     "node_modules",
     ".git",
-    ".obsidian",
     ".DS_Store",
     ".space",
   ],
@@ -124,7 +123,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Icon container with PNG logo
     const iconContainer = header.createDiv({ cls: "evc-settings-icon" });
-    const logoImg = iconContainer.createEl("img", {
+    iconContainer.createEl("img", {
       attr: {
         src: EVC_LOGO_BASE64,
         alt: "EVC Logo",
@@ -164,11 +163,11 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    * Display General Settings section
    */
   private displayGeneralSettings(containerEl: HTMLElement): void {
-    new Setting(containerEl).setName("General settings").setHeading();
+    new Setting(containerEl).setName("Sync options").setHeading();
 
     // Sync Mode
     new Setting(containerEl)
-      .setName("Sync Mode")
+      .setName("Sync mode")
       .setDesc("How synchronization is triggered")
       .addDropdown((dropdown) =>
         dropdown
@@ -185,7 +184,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Sync on Startup
     new Setting(containerEl)
-      .setName("Sync on Startup")
+      .setName("Sync on startup")
       .setDesc("Automatically sync all enabled mappings when Obsidian starts")
       .addToggle((toggle) =>
         toggle
@@ -217,7 +216,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Scheduled Interval
     new Setting(containerEl)
-      .setName("Scheduled Interval (minutes)")
+      .setName("Scheduled interval (minutes)")
       .setDesc(
         "How often to sync when using scheduled mode. Minimum: 1 minute."
       )
@@ -236,7 +235,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Conflict Resolution
     new Setting(containerEl)
-      .setName("Conflict Resolution")
+      .setName("Conflict resolution")
       .setDesc("How to handle files modified in both locations")
       .addDropdown((dropdown) =>
         dropdown
@@ -254,7 +253,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Create Backups
     new Setting(containerEl)
-      .setName("Create Backups")
+      .setName("Create backups")
       .setDesc("Create backup files before overwriting during sync")
       .addToggle((toggle) =>
         toggle
@@ -273,7 +272,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Show Auto-Sync Notifications
     new Setting(containerEl)
-      .setName("Show Auto-Sync Notifications")
+      .setName("Show auto-sync notifications")
       .setDesc("Show notifications when files are auto-synced (on-change mode)")
       .addToggle((toggle) =>
         toggle
@@ -286,7 +285,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Follow Symlinks
     new Setting(containerEl)
-      .setName("Follow Symlinks")
+      .setName("Follow symlinks")
       .setDesc("Follow symbolic links when scanning directories")
       .addToggle((toggle) =>
         toggle
@@ -299,7 +298,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Log Retention
     new Setting(containerEl)
-      .setName("Log Retention (days)")
+      .setName("Log retention (days)")
       .setDesc("How long to keep sync logs")
       .addText((text) =>
         text
@@ -323,7 +322,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // File Extensions
     new Setting(containerEl)
-      .setName("File Extensions")
+      .setName("File extensions")
       .setDesc("File types to sync (comma-separated, e.g., .md, .canvas)")
       .addText((text) =>
         text
@@ -340,13 +339,13 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Exclude Patterns
     new Setting(containerEl)
-      .setName("Exclude Patterns")
+      .setName("Exclude patterns")
       .setDesc(
         "Folders/files to exclude from sync (comma-separated, e.g., node_modules, .git)"
       )
       .addText((text) =>
         text
-          .setPlaceholder("node_modules, .git, .obsidian")
+          .setPlaceholder("node_modules, .git, attachments")
           .setValue(this.plugin.settings.excludePatterns.join(", "))
           .onChange(async (value) => {
             this.plugin.settings.excludePatterns = value
@@ -366,11 +365,11 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Add Mapping button
     new Setting(containerEl)
-      .setName("Add Project Mapping")
+      .setName("Add project mapping")
       .setDesc("Create a new sync mapping between an AI project and Obsidian folder")
       .addButton((button) =>
         button
-          .setButtonText("Add Mapping")
+          .setButtonText("Add mapping")
           .setCta()
           .onClick(() => this.openAddMappingModal())
       );
@@ -395,7 +394,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     if (mappings.length === 0) {
       this.mappingsContainer.createEl("p", {
-        text: "No project mappings configured. Click 'Add Mapping' to create one.",
+        text: "No project mappings configured. Click 'Add mapping' to create one.",
         cls: "evc-no-mappings",
       });
       return;
@@ -537,11 +536,11 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Sync All button
     new Setting(actionsContainer)
-      .setName("Sync All Projects")
+      .setName("Sync all projects")
       .setDesc("Synchronize all enabled project mappings now")
       .addButton((button: ButtonComponent) =>
         button
-          .setButtonText("Sync All")
+          .setButtonText("Sync all")
           .setCta()
           .onClick(async () => {
             await this.plugin.syncAllProjects();
@@ -550,20 +549,20 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Dry Run button
     new Setting(actionsContainer)
-      .setName("Dry Run")
+      .setName("Dry run")
       .setDesc("Preview what would be synced without making changes")
       .addButton((button: ButtonComponent) =>
-        button.setButtonText("Dry Run").onClick(async () => {
+        button.setButtonText("Dry run").onClick(async () => {
           await this.plugin.dryRun();
         })
       );
 
     // View Logs button
     new Setting(actionsContainer)
-      .setName("View Logs")
+      .setName("View logs")
       .setDesc("View recent sync log entries")
       .addButton((button: ButtonComponent) =>
-        button.setButtonText("View Logs").onClick(() => {
+        button.setButtonText("View logs").onClick(() => {
           this.plugin.viewLogs();
         })
       );
@@ -575,7 +574,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Export Configuration
     new Setting(configContainer)
-      .setName("Export Configuration")
+      .setName("Export configuration")
       .setDesc("Export settings and mappings to a JSON file")
       .addButton((button: ButtonComponent) =>
         button.setButtonText("Export").onClick(() => {
@@ -585,7 +584,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Import Configuration
     new Setting(configContainer)
-      .setName("Import Configuration")
+      .setName("Import configuration")
       .setDesc("Import settings and mappings from a JSON file")
       .addButton((button: ButtonComponent) =>
         button.setButtonText("Import").onClick(() => {
@@ -709,7 +708,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
           const files = this.app.vault.getFiles();
           for (const file of files) {
             if (file.path.startsWith(obsPath) && file.path.includes(".backup-")) {
-              await this.app.vault.delete(file);
+              await this.app.fileManager.trashFile(file);
               deletedCount++;
             }
           }

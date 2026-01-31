@@ -34,7 +34,7 @@ export class ConfirmationModal extends Modal {
     contentEl.addClass("evc-sync-modal", "evc-confirmation-modal");
 
     // Title
-    contentEl.createEl("h2", { text: "Confirm action" });
+    contentEl.createEl("h2", { text: "Confirm" });
 
     // Message
     contentEl.createEl("p", {

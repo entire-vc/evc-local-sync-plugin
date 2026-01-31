@@ -1,4 +1,5 @@
 import { Plugin, Notice, addIcon } from "obsidian";
+import { openPluginSettings } from "./obsidian-internal";
 
 // Custom EVC icon SVG (simplified for Obsidian)
 const EVC_ICON_SVG = `<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
@@ -72,7 +73,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
 
     // Initialize file watcher
     this.fileWatcher = new FileWatcher(this.app, this.settings);
-    this.fileWatcher.onFileChange((events) => this.handleFileChanges(events));
+    this.fileWatcher.onFileChange((events) => void this.handleFileChanges(events));
 
     // Start file watcher if syncMode is "on-change"
     if (this.settings.syncMode === "on-change") {
@@ -193,21 +194,21 @@ export default class EVCLocalSyncPlugin extends Plugin {
     this.addCommand({
       id: "sync-all-projects",
       name: "Sync All Projects",
-      callback: () => this.syncAllProjects(),
+      callback: () => void this.syncAllProjects(),
     });
 
     // Sync Current Project
     this.addCommand({
       id: "sync-current-project",
       name: "Sync Current Project",
-      callback: () => this.syncCurrentProject(),
+      callback: () => void this.syncCurrentProject(),
     });
 
     // Dry Run
     this.addCommand({
       id: "dry-run",
       name: "Dry Run (Preview Changes)",
-      callback: () => this.dryRun(),
+      callback: () => void this.dryRun(),
     });
 
     // Open Settings
@@ -215,13 +216,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
       id: "open-settings",
       name: "Open Settings",
       callback: () => {
-        // Open plugin settings tab
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const setting = (this.app as any).setting as { open: () => void; openTabById: (id: string) => void } | undefined;
-        if (setting) {
-          setting.open();
-          setting.openTabById(this.manifest.id);
-        }
+        openPluginSettings(this.app, this.manifest.id);
       },
     });
 

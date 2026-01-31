@@ -1,6 +1,7 @@
 import { App, TFile, TFolder, normalizePath } from "obsidian";
 import type { ProjectMapping, EVCLocalSyncSettings } from "./settings";
 import { ConflictResolver, type ConflictInfo, type ResolutionDecision } from "./conflict-resolver";
+import { getVaultBasePath } from "./obsidian-internal";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -177,7 +178,7 @@ export class SyncEngine {
       await this.ensureObsidianFolder(obsDocsPath);
 
       // Get file lists from both sides
-      const aiFiles = await this.getFileList(aiDocsPath, false);
+      const aiFiles = this.getFileList(aiDocsPath, false);
       const obsFiles = await this.getObsidianFileList(obsDocsPath);
 
       // Create lookup maps for faster comparison
@@ -641,8 +642,7 @@ export class SyncEngine {
 
             if (stats) {
               // Get absolute path for Obsidian files
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const vaultBasePath = (this.app.vault.adapter as any).basePath as string || "";
+              const vaultBasePath = getVaultBasePath(this.app);
               const absolutePath = path.join(vaultBasePath, child.path);
 
               files.push({
@@ -762,8 +762,7 @@ export class SyncEngine {
     }
 
     // Preserve source file mtime on target using fs directly
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vaultBasePath = (this.app.vault.adapter as any).basePath as string || "";
+    const vaultBasePath = getVaultBasePath(this.app);
     const absoluteTargetPath = path.join(vaultBasePath, targetPath);
     if (fs.existsSync(absoluteTargetPath)) {
       fs.utimesSync(absoluteTargetPath, sourceMtime, sourceMtime);
@@ -792,8 +791,7 @@ export class SyncEngine {
     }
 
     // Read from Obsidian vault using the abstract file path
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vaultBasePath = (this.app.vault.adapter as any).basePath as string || "";
+    const vaultBasePath = getVaultBasePath(this.app);
     const vaultPath = sourcePath.replace(vaultBasePath, "").replace(/^[/\\]/, "");
     const normalizedVaultPath = normalizePath(vaultPath);
 

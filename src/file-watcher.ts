@@ -2,6 +2,7 @@ import * as chokidar from "chokidar";
 import * as path from "path";
 import type { App } from "obsidian";
 import type { EVCLocalSyncSettings, ProjectMapping } from "./settings";
+import { getVaultBasePath } from "./obsidian-internal";
 
 /**
  * File change event
@@ -64,9 +65,9 @@ export class FileWatcher {
     // Restart watchers if sync mode changed
     if (wasWatching && oldMode !== settings.syncMode) {
       if (settings.syncMode === "on-change") {
-        this.restart();
+        void this.restart();
       } else {
-        this.stop();
+        void this.stop();
       }
     }
   }
@@ -103,7 +104,7 @@ export class FileWatcher {
     }
 
     // Close all watchers
-    for (const [id, watcher] of this.watchers) {
+    for (const watcher of this.watchers.values()) {
       await watcher.close();
     }
 
@@ -129,8 +130,7 @@ export class FileWatcher {
     this.watchDirectory(aiDocsPath, mapping, "ai");
 
     // Watch Obsidian docs folder
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vaultBasePath = (this.app.vault.adapter as any).basePath || "";
+    const vaultBasePath = getVaultBasePath(this.app);
     const obsDocsPath = this.getObsidianDocsPath(mapping);
     const fullObsDocsPath = path.join(vaultBasePath, obsDocsPath);
     this.watchDirectory(fullObsDocsPath, mapping, "obsidian");

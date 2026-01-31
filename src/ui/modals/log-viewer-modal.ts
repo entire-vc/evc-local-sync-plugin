@@ -34,7 +34,7 @@ export class LogViewerModal extends Modal {
     contentEl.addClass("evc-sync-modal", "evc-log-viewer-modal");
 
     // Title
-    contentEl.createEl("h2", { text: "Sync Logs" });
+    contentEl.createEl("h2", { text: "Sync logs" });
 
     // Filter controls
     this.renderFilterControls(contentEl);

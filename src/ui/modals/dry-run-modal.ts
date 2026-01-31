@@ -17,7 +17,7 @@ interface ActionGroup {
  * - Files to copy/update to Obsidian
  * - Files to copy/update to AI project
  * - Files that will be skipped
- * - Execute Sync / Close buttons
+ * - Execute sync / Close buttons
  */
 export class DryRunModal extends Modal {
   private results: DryRunResult[];
@@ -41,7 +41,7 @@ export class DryRunModal extends Modal {
     contentEl.addClass("evc-sync-modal", "evc-dry-run-modal");
 
     // Title
-    contentEl.createEl("h2", { text: "Sync Preview (Dry Run)" });
+    contentEl.createEl("h2", { text: "Sync preview" });
 
     const totalActions = this.getTotalActions();
     const totalErrors = this.getTotalErrors();
@@ -354,10 +354,10 @@ export class DryRunModal extends Modal {
       this.close();
     });
 
-    // Execute Sync button (only if there are actions)
+    // Execute sync button (only if there are actions)
     if (totalActions > 0) {
       const executeBtn = buttonsEl.createEl("button", {
-        text: "Execute Sync",
+        text: "Execute sync",
         cls: "evc-btn evc-btn-cta mod-cta",
       });
       executeBtn.addEventListener("click", async () => {
@@ -370,7 +370,7 @@ export class DryRunModal extends Modal {
         } catch (error) {
           new Notice(`Sync failed: ${(error as Error).message}`);
           executeBtn.disabled = false;
-          executeBtn.textContent = "Execute Sync";
+          executeBtn.textContent = "Execute sync";
         }
       });
     }

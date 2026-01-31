@@ -1,6 +1,7 @@
 import { Menu, setIcon } from "obsidian";
 import type EVCLocalSyncPlugin from "../main";
 import { EVC_ICON_ID } from "../main";
+import { openPluginSettings } from "../obsidian-internal";
 
 /**
  * Sync status states
@@ -124,7 +125,7 @@ export class StatusBarItem {
         .setTitle("Sync All Projects")
         .setIcon(EVC_ICON_ID)
         .onClick(() => {
-          this.plugin.syncAllProjects();
+          void this.plugin.syncAllProjects();
         })
     );
 
@@ -134,7 +135,7 @@ export class StatusBarItem {
         .setTitle("Sync Current Project")
         .setIcon("file-sync")
         .onClick(() => {
-          this.plugin.syncCurrentProject();
+          void this.plugin.syncCurrentProject();
         })
     );
 
@@ -144,7 +145,7 @@ export class StatusBarItem {
         .setTitle("Dry Run (Preview)")
         .setIcon("eye")
         .onClick(() => {
-          this.plugin.dryRun();
+          void this.plugin.dryRun();
         })
     );
 
@@ -166,12 +167,7 @@ export class StatusBarItem {
         .setTitle("Settings")
         .setIcon("settings")
         .onClick(() => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const setting = (this.plugin.app as any).setting as { open: () => void; openTabById: (id: string) => void } | undefined;
-          if (setting) {
-            setting.open();
-            setting.openTabById(this.plugin.manifest.id);
-          }
+          openPluginSettings(this.plugin.app, this.plugin.manifest.id);
         })
     );
 

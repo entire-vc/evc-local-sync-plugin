@@ -70,7 +70,7 @@ export class MappingManager {
    */
   async add(mapping: Omit<ProjectMapping, "id">): Promise<ProjectMapping> {
     // Validate before adding
-    const validation = await this.validate(mapping);
+    const validation = this.validate(mapping);
     if (!validation.valid) {
       throw new Error(`Invalid mapping: ${validation.errors.join(", ")}`);
     }
@@ -110,7 +110,7 @@ export class MappingManager {
       updates.obsidianPath !== undefined ||
       updates.docsSubdir !== undefined
     ) {
-      const validation = await this.validate(updatedMapping, id);
+      const validation = this.validate(updatedMapping, id);
       if (!validation.valid) {
         throw new Error(`Invalid mapping: ${validation.errors.join(", ")}`);
       }
@@ -155,10 +155,10 @@ export class MappingManager {
    * @param mapping - The mapping to validate
    * @param excludeId - ID to exclude from duplicate check (for edit mode)
    */
-  async validate(
+  validate(
     mapping: Omit<ProjectMapping, "id"> & { id?: string },
     excludeId?: string
-  ): Promise<MappingValidationResult> {
+  ): MappingValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -346,9 +346,9 @@ export class MappingManager {
     try {
       const obsDocsPath = this.getObsidianDocsPath(mapping);
       const folder = this.app.vault.getAbstractFileByPath(obsDocsPath);
-      if (folder && "children" in folder) {
+      if (folder instanceof TFolder) {
         obsidianFileCount = this.countVaultFiles(
-          folder as TFolder,
+          folder,
           this.settings.fileTypes
         );
       }

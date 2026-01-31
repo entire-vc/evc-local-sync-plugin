@@ -39,7 +39,7 @@ export class ConflictModal extends Modal {
     contentEl.addClass("evc-sync-modal", "evc-conflict-modal");
 
     // Title
-    contentEl.createEl("h2", { text: "File Conflict" });
+    contentEl.createEl("h2", { text: "File conflict" });
 
     // Description
     contentEl.createEl("p", {
@@ -80,7 +80,7 @@ export class ConflictModal extends Modal {
 
     // AI Version
     const aiEl = comparisonEl.createDiv({ cls: "evc-conflict-version evc-conflict-version-ai" });
-    aiEl.createEl("h4", { text: "AI Project Version" });
+    aiEl.createEl("h4", { text: "AI project version" });
     this.renderVersionInfo(aiEl, {
       mtime: this.conflict.aiMtime,
       size: this.conflict.aiSize,
@@ -95,7 +95,7 @@ export class ConflictModal extends Modal {
 
     // Obsidian Version
     const obsEl = comparisonEl.createDiv({ cls: "evc-conflict-version evc-conflict-version-obs" });
-    obsEl.createEl("h4", { text: "Obsidian Version" });
+    obsEl.createEl("h4", { text: "Obsidian version" });
     this.renderVersionInfo(obsEl, {
       mtime: this.conflict.obsidianMtime,
       size: this.conflict.obsidianSize,
@@ -178,7 +178,7 @@ export class ConflictModal extends Modal {
 
     // Use AI Version button
     const useAiBtn = buttonsEl.createEl("button", {
-      text: "Use AI Version",
+      text: "Use AI version",
       cls: "evc-btn evc-btn-ai",
     });
     useAiBtn.addEventListener("click", () => {
@@ -187,7 +187,7 @@ export class ConflictModal extends Modal {
 
     // Use Obsidian Version button
     const useObsBtn = buttonsEl.createEl("button", {
-      text: "Use Obsidian Version",
+      text: "Use Obsidian version",
       cls: "evc-btn evc-btn-obs",
     });
     useObsBtn.addEventListener("click", () => {

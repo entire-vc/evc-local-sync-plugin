@@ -1,6 +1,7 @@
 import { Menu } from "obsidian";
 import type EVCLocalSyncPlugin from "../main";
 import { EVC_ICON_ID } from "../main";
+import { openPluginSettings } from "../obsidian-internal";
 
 /**
  * Ribbon icon for quick sync access (FR-023)
@@ -30,7 +31,7 @@ export class RibbonIcon {
           this.showMenu(event);
         } else {
           // Left-click syncs all
-          this.plugin.syncAllProjects();
+          void this.plugin.syncAllProjects();
         }
       }
     );
@@ -56,7 +57,7 @@ export class RibbonIcon {
         .setTitle("Sync All Projects")
         .setIcon("refresh-cw")
         .onClick(() => {
-          this.plugin.syncAllProjects();
+          void this.plugin.syncAllProjects();
         })
     );
 
@@ -66,7 +67,7 @@ export class RibbonIcon {
         .setTitle("Sync Current Project")
         .setIcon("file-sync")
         .onClick(() => {
-          this.plugin.syncCurrentProject();
+          void this.plugin.syncCurrentProject();
         })
     );
 
@@ -76,7 +77,7 @@ export class RibbonIcon {
         .setTitle("Dry Run (Preview)")
         .setIcon("eye")
         .onClick(() => {
-          this.plugin.dryRun();
+          void this.plugin.dryRun();
         })
     );
 
@@ -98,12 +99,7 @@ export class RibbonIcon {
         .setTitle("Settings")
         .setIcon("settings")
         .onClick(() => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const setting = (this.plugin.app as any).setting as { open: () => void; openTabById: (id: string) => void } | undefined;
-          if (setting) {
-            setting.open();
-            setting.openTabById(this.plugin.manifest.id);
-          }
+          openPluginSettings(this.plugin.app, this.plugin.manifest.id);
         })
     );
 
