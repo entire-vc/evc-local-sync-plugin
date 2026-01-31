@@ -32,7 +32,7 @@ export class StatusBarItem {
   init(): void {
     this.statusBarEl = this.plugin.addStatusBarItem();
     this.statusBarEl.addClass("evc-status-bar");
-    this.statusBarEl.setAttribute("aria-label", "EVC Sync Status");
+    this.statusBarEl.setAttribute("aria-label", "EVC Sync status");
 
     // Add click handler for quick actions menu
     this.statusBarEl.addEventListener("click", (e) => {

@@ -137,7 +137,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     const infoContainer = header.createDiv({ cls: "evc-settings-info" });
 
     // Title
-    infoContainer.createEl("div", { text: "EVC Local Sync to AI Agent", cls: "evc-settings-title" });
+    infoContainer.createEl("div", { text: "EVC local sync to AI agent", cls: "evc-settings-title" });
 
     // Description
     infoContainer.createEl("p", {
@@ -410,8 +410,8 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     const headerRow = thead.createEl("tr");
     headerRow.createEl("th", { text: "Enabled" });
     headerRow.createEl("th", { text: "Name" });
-    headerRow.createEl("th", { text: "AI Path" });
-    headerRow.createEl("th", { text: "Obsidian Path" });
+    headerRow.createEl("th", { text: "AI path" });
+    headerRow.createEl("th", { text: "Obsidian path" });
     headerRow.createEl("th", { text: "Direction" });
     headerRow.createEl("th", { text: "Actions" });
 

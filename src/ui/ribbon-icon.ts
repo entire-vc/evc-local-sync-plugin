@@ -20,7 +20,7 @@ export class RibbonIcon {
   init(): void {
     this.iconEl = this.plugin.addRibbonIcon(
       EVC_ICON_ID,
-      "EVC Sync: Sync all projects",
+      "EVC Sync: sync all projects",
       () => {
         void this.plugin.syncAllProjects();
       }

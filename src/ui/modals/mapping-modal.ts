@@ -94,11 +94,11 @@ export class MappingModal extends Modal {
     // Name
     new Setting(containerEl)
       .setName("Mapping name")
-      .setDesc("A friendly name for this mapping (e.g., 'My Project')")
+      .setDesc("A friendly name for this mapping (e.g., 'My project')")
       .addText((text) => {
         this.nameInput = text;
         text
-          .setPlaceholder("My Project")
+          .setPlaceholder("My project")
           .setValue(this.mapping.name)
           .onChange((value) => {
             this.mapping.name = value;
@@ -129,7 +129,7 @@ export class MappingModal extends Modal {
       .addText((text) => {
         this.obsidianPathInput = text;
         text
-          .setPlaceholder("Projects/MyProject")
+          .setPlaceholder("Projects/my-project")
           .setValue(this.mapping.obsidianPath)
           .onChange((value) => {
             this.mapping.obsidianPath = value;

@@ -235,13 +235,13 @@ export default class EVCLocalSyncPlugin extends Plugin {
     const enabledMappings = this.mappingManager.getEnabled();
 
     if (enabledMappings.length === 0) {
-      new Notice("EVC Sync: No enabled mappings found");
+      new Notice("EVC Sync: no enabled mappings found");
       return;
     }
 
     // Update status bar
     this.statusBar?.setStatus("syncing", "Syncing...");
-    new Notice(`EVC Sync: Syncing ${enabledMappings.length} project(s)...`);
+    new Notice(`EVC Sync: syncing ${enabledMappings.length} project(s)...`);
 
     try {
       const results = await this.syncEngine.syncAll();
@@ -301,14 +301,14 @@ export default class EVCLocalSyncPlugin extends Plugin {
     const activeFile = this.app.workspace.getActiveFile();
 
     if (!activeFile) {
-      new Notice("EVC Sync: No active file");
+      new Notice("EVC Sync: no active file");
       return;
     }
 
     const mapping = this.mappingManager.findByFilePath(activeFile.path);
 
     if (!mapping) {
-      new Notice("EVC Sync: No mapping found for current file");
+      new Notice("EVC Sync: no mapping found for current file");
       return;
     }
 
@@ -365,11 +365,11 @@ export default class EVCLocalSyncPlugin extends Plugin {
     const enabledMappings = this.mappingManager.getEnabled();
 
     if (enabledMappings.length === 0) {
-      new Notice("EVC Sync: No enabled mappings found");
+      new Notice("EVC Sync: no enabled mappings found");
       return;
     }
 
-    new Notice("EVC Sync: Analyzing changes...");
+    new Notice("EVC Sync: analyzing changes...");
 
     try {
       const results = await this.syncEngine.dryRunAll();
