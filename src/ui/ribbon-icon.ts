@@ -38,9 +38,23 @@ export class RibbonIcon {
 
     this.iconEl.addClass("evc-ribbon-icon");
 
+    // Prevent drag behavior on right-click
+    this.iconEl.addEventListener("mousedown", (event: MouseEvent) => {
+      if (event.button === 2) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    });
+
+    // Prevent drag start entirely for this icon
+    this.iconEl.addEventListener("dragstart", (event: DragEvent) => {
+      event.preventDefault();
+    });
+
     // Add context menu on right-click
     this.iconEl.addEventListener("contextmenu", (event: MouseEvent) => {
       event.preventDefault();
+      event.stopPropagation();
       this.showMenu(event);
     });
   }
