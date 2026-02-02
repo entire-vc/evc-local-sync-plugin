@@ -3,6 +3,7 @@ import type EVCLocalSyncPlugin from "./main";
 import { MappingModal } from "./ui/modals/mapping-modal";
 import { showConfirmation } from "./ui/modals/confirmation-modal";
 import { EVC_LOGO_BASE64 } from "./logo";
+import { hasCustomSettings, getCustomSettingsDescription } from "./sync-state-manager";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -37,6 +38,14 @@ export interface ProjectMapping {
   syncEnabled: boolean;
   bidirectional: boolean;
   syncDirection?: SyncDirection;
+
+  // Per-mapping overrides (FR-061, FR-062)
+  /** Override global conflict resolution (undefined = use global) */
+  conflictResolutionOverride?: ConflictResolution;
+  /** Override global file types (undefined = use global) */
+  fileTypesOverride?: string[];
+  /** Override global exclude patterns (undefined = use global) */
+  excludePatternsOverride?: string[];
 }
 
 /**
@@ -56,13 +65,17 @@ export interface EVCLocalSyncSettings {
   excludePatterns: string[];
   mappings: ProjectMapping[];
   logRetentionDays: number;
+  /** Enable file deletion sync (FR-060) */
+  syncDeletions: boolean;
+  /** Confirm before deleting files (FR-060) */
+  confirmDeletions: boolean;
 }
 
 /**
  * Default settings
  */
 export const DEFAULT_SETTINGS: EVCLocalSyncSettings = {
-  version: "1.0",
+  version: "1.0.1",
   syncMode: "manual",
   syncOnStartup: false,
   debounceMs: 3000,
@@ -80,6 +93,8 @@ export const DEFAULT_SETTINGS: EVCLocalSyncSettings = {
   ],
   mappings: [],
   logRetentionDays: 7,
+  syncDeletions: false,
+  confirmDeletions: true,
 };
 
 /**
@@ -296,6 +311,32 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
           })
       );
 
+    // Sync Deletions (FR-060)
+    new Setting(containerEl)
+      .setName("Sync deletions")
+      .setDesc("When a file is deleted in one location, delete it in the other location too")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.syncDeletions)
+          .onChange(async (value) => {
+            this.plugin.settings.syncDeletions = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // Confirm Deletions (FR-060)
+    new Setting(containerEl)
+      .setName("Confirm deletions")
+      .setDesc("Show confirmation before deleting files during sync")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.confirmDeletions)
+          .onChange(async (value) => {
+            this.plugin.settings.confirmDeletions = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
     // Log Retention
     new Setting(containerEl)
       .setName("Log retention (days)")
@@ -432,8 +473,19 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
         });
       });
 
-      // Name
-      row.createEl("td", { text: mapping.name });
+      // Name (with custom settings indicator)
+      const nameCell = row.createEl("td");
+      nameCell.createEl("span", { text: mapping.name });
+
+      // Show indicator if mapping has custom settings (FR-061, FR-062)
+      if (hasCustomSettings(mapping)) {
+        const indicator = nameCell.createEl("span", {
+          text: " ⚙",
+          cls: "evc-custom-settings-indicator",
+        });
+        const descriptions = getCustomSettingsDescription(mapping, this.plugin.settings);
+        indicator.setAttribute("title", "Custom settings:\n" + descriptions.join("\n"));
+      }
 
       // AI Path (truncated)
       const aiPathCell = row.createEl("td", { cls: "evc-path-cell" });

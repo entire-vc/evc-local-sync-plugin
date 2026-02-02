@@ -56,8 +56,16 @@ export default class EVCLocalSyncPlugin extends Plugin {
       () => this.saveSettings()
     );
 
-    this.syncEngine = new SyncEngine(this.app, this.settings);
+    // Get plugin data directory path
+    const pluginDir = (this.app.vault.adapter as {basePath?: string}).basePath
+      ? `${(this.app.vault.adapter as {basePath: string}).basePath}/${this.app.vault.configDir}/plugins/${this.manifest.id}`
+      : `${this.app.vault.configDir}/plugins/${this.manifest.id}`;
+
+    this.syncEngine = new SyncEngine(this.app, this.settings, pluginDir);
     this.syncEngine.setConflictModalCallback((conflict) => this.showConflictModal(conflict));
+
+    // Initialize sync state manager
+    await this.syncEngine.init();
 
     this.logger = new SyncLogger(this.app, {
       ...DEFAULT_LOGGER_CONFIG,

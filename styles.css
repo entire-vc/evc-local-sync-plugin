@@ -1069,3 +1069,103 @@
 .evc-ribbon-icon:hover {
   color: var(--text-accent);
 }
+
+/* ============================================ */
+/* Deletion Styles (FR-060) */
+/* ============================================ */
+
+.evc-dry-run-badge-delete {
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+}
+
+.evc-dry-run-group-delete {
+  border-left: 3px solid var(--text-error);
+  padding-left: 0.5rem;
+}
+
+.evc-dry-run-group-title-delete {
+  color: var(--text-error);
+  font-weight: 600;
+}
+
+.evc-dry-run-item-delete {
+  color: var(--text-error);
+}
+
+.evc-dry-run-icon-delete {
+  color: var(--text-error);
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+.evc-log-action-delete {
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+}
+
+/* ============================================ */
+/* Custom Settings Indicator (FR-061, FR-062) */
+/* ============================================ */
+
+.evc-custom-settings-indicator {
+  color: var(--text-accent);
+  cursor: help;
+  margin-left: 4px;
+}
+
+/* ============================================ */
+/* Advanced Settings Section (FR-061, FR-062) */
+/* ============================================ */
+
+.evc-advanced-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 500;
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: 1rem;
+  user-select: none;
+}
+
+.evc-advanced-header:hover {
+  color: var(--text-normal);
+}
+
+.evc-advanced-toggle-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.evc-advanced-toggle-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.evc-advanced-title {
+  font-size: 0.95em;
+}
+
+.evc-advanced-content {
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--background-modifier-border);
+  margin-left: 0.5rem;
+}
+
+.evc-advanced-content .setting-item {
+  padding: 0.5rem 0;
+}
+
+.evc-advanced-content .setting-item-name {
+  font-size: 0.9em;
+}
+
+.evc-advanced-content .setting-item-description {
+  font-size: 0.8em;
+}

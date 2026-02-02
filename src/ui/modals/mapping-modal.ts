@@ -6,8 +6,9 @@ import {
   TextComponent,
   DropdownComponent,
   ToggleComponent,
+  setIcon,
 } from "obsidian";
-import type { ProjectMapping, SyncDirection } from "../../settings";
+import type { ProjectMapping, SyncDirection, ConflictResolution } from "../../settings";
 import type EVCLocalSyncPlugin from "../../main";
 
 /**
@@ -38,6 +39,10 @@ export class MappingModal extends Modal {
   private syncDirectionDropdown: DropdownComponent;
   private directionSetting: Setting;
 
+  // Advanced settings
+  private advancedContainer: HTMLElement;
+  private advancedExpanded = false;
+
   // Error display
   private errorContainer: HTMLElement;
 
@@ -58,7 +63,19 @@ export class MappingModal extends Modal {
           syncEnabled: true,
           bidirectional: true,
           syncDirection: "ai-to-obs",
+          conflictResolutionOverride: undefined,
+          fileTypesOverride: undefined,
+          excludePatternsOverride: undefined,
         };
+
+    // Expand advanced settings if any override is set
+    if (options.mapping) {
+      this.advancedExpanded = !!(
+        options.mapping.conflictResolutionOverride ||
+        options.mapping.fileTypesOverride ||
+        options.mapping.excludePatternsOverride
+      );
+    }
   }
 
   onOpen(): void {
@@ -192,6 +209,110 @@ export class MappingModal extends Modal {
       });
 
     this.updateDirectionVisibility();
+
+    // Advanced settings section (FR-061, FR-062)
+    this.createAdvancedSettings(containerEl);
+  }
+
+  /**
+   * Create advanced settings section (collapsible)
+   */
+  private createAdvancedSettings(containerEl: HTMLElement): void {
+    // Header
+    const headerEl = containerEl.createDiv({ cls: "evc-advanced-header" });
+
+    const toggleIcon = headerEl.createSpan({ cls: "evc-advanced-toggle-icon" });
+    setIcon(toggleIcon, this.advancedExpanded ? "chevron-down" : "chevron-right");
+
+    headerEl.createSpan({ text: "Advanced settings", cls: "evc-advanced-title" });
+
+    // Content container
+    this.advancedContainer = containerEl.createDiv({ cls: "evc-advanced-content" });
+    if (!this.advancedExpanded) {
+      this.advancedContainer.addClass("evc-hidden");
+    }
+
+    // Toggle handler
+    headerEl.addEventListener("click", () => {
+      this.advancedExpanded = !this.advancedExpanded;
+      setIcon(toggleIcon, this.advancedExpanded ? "chevron-down" : "chevron-right");
+      if (this.advancedExpanded) {
+        this.advancedContainer.removeClass("evc-hidden");
+      } else {
+        this.advancedContainer.addClass("evc-hidden");
+      }
+    });
+
+    // Conflict Resolution Override
+    const globalConflict = this.plugin.settings.conflictResolution;
+    const conflictLabels: Record<string, string> = {
+      "newer-wins": "Newer file wins",
+      "always-ask": "Always ask",
+      "ai-wins": "AI project wins",
+      "obsidian-wins": "Obsidian wins",
+    };
+
+    new Setting(this.advancedContainer)
+      .setName("Conflict resolution")
+      .setDesc(`Override global setting (current: ${conflictLabels[globalConflict]})`)
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("", `Use global (${conflictLabels[globalConflict]})`)
+          .addOption("newer-wins", "Newer file wins")
+          .addOption("always-ask", "Always ask")
+          .addOption("ai-wins", "AI project wins")
+          .addOption("obsidian-wins", "Obsidian wins")
+          .setValue(this.mapping.conflictResolutionOverride || "")
+          .onChange((value) => {
+            this.mapping.conflictResolutionOverride = value ? value as ConflictResolution : undefined;
+          });
+      });
+
+    // File Types Override
+    const globalFileTypes = this.plugin.settings.fileTypes.join(", ");
+
+    new Setting(this.advancedContainer)
+      .setName("File types")
+      .setDesc(`Override global file types (current: ${globalFileTypes})`)
+      .addText((text) => {
+        text
+          .setPlaceholder(`Use global (${globalFileTypes})`)
+          .setValue(this.mapping.fileTypesOverride?.join(", ") || "")
+          .onChange((value) => {
+            if (value.trim()) {
+              this.mapping.fileTypesOverride = value
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0);
+            } else {
+              this.mapping.fileTypesOverride = undefined;
+            }
+          });
+        text.inputEl.addClass("evc-input-wide");
+      });
+
+    // Exclude Patterns Override
+    const globalExclude = this.plugin.settings.excludePatterns.join(", ");
+
+    new Setting(this.advancedContainer)
+      .setName("Exclude patterns")
+      .setDesc(`Override global exclusions (current: ${globalExclude})`)
+      .addText((text) => {
+        text
+          .setPlaceholder(`Use global (${globalExclude})`)
+          .setValue(this.mapping.excludePatternsOverride?.join(", ") || "")
+          .onChange((value) => {
+            if (value.trim()) {
+              this.mapping.excludePatternsOverride = value
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0);
+            } else {
+              this.mapping.excludePatternsOverride = undefined;
+            }
+          });
+        text.inputEl.addClass("evc-input-wide");
+      });
   }
 
   /**

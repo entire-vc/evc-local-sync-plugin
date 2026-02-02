@@ -1,5 +1,6 @@
 import { App, Modal, Notice } from "obsidian";
 import type { DryRunResult, PlannedSyncAction } from "../../sync-engine";
+import type { DetectedDeletion } from "../../sync-state-manager";
 
 /**
  * Group of actions for a single mapping
@@ -8,6 +9,8 @@ interface ActionGroup {
   toObsidian: PlannedSyncAction[];
   toAi: PlannedSyncAction[];
   skipped: PlannedSyncAction[];
+  deletionsInObsidian: DetectedDeletion[];
+  deletionsInAi: DetectedDeletion[];
 }
 
 /**
@@ -44,18 +47,19 @@ export class DryRunModal extends Modal {
     contentEl.createEl("h2", { text: "Sync preview" });
 
     const totalActions = this.getTotalActions();
+    const totalDeletions = this.getTotalDeletions();
     const totalErrors = this.getTotalErrors();
 
     // Summary
-    if (totalActions === 0 && totalErrors === 0) {
+    if (totalActions === 0 && totalDeletions === 0 && totalErrors === 0) {
       this.renderNoChanges(contentEl);
     } else {
-      this.renderSummary(contentEl, totalActions, totalErrors);
+      this.renderSummary(contentEl, totalActions, totalDeletions, totalErrors);
       this.renderResults(contentEl);
     }
 
     // Buttons
-    this.renderButtons(contentEl, totalActions);
+    this.renderButtons(contentEl, totalActions + totalDeletions);
   }
 
   /**
@@ -79,6 +83,7 @@ export class DryRunModal extends Modal {
   private renderSummary(
     containerEl: HTMLElement,
     totalActions: number,
+    totalDeletions: number,
     totalErrors: number
   ): void {
     const summaryEl = containerEl.createDiv({ cls: "evc-dry-run-summary" });
@@ -96,8 +101,9 @@ export class DryRunModal extends Modal {
       }
     }
 
+    const totalPlanned = totalActions + totalDeletions;
     summaryEl.createEl("span", {
-      text: `${totalActions} action(s) planned: `,
+      text: `${totalPlanned} action(s) planned: `,
       cls: "evc-dry-run-summary-text",
     });
 
@@ -111,6 +117,12 @@ export class DryRunModal extends Modal {
       summaryEl.createEl("span", {
         text: `${updateCount} update`,
         cls: "evc-dry-run-badge evc-dry-run-badge-update",
+      });
+    }
+    if (totalDeletions > 0) {
+      summaryEl.createEl("span", {
+        text: `${totalDeletions} delete`,
+        cls: "evc-dry-run-badge evc-dry-run-badge-delete",
       });
     }
     if (skipCount > 0) {
@@ -135,8 +147,12 @@ export class DryRunModal extends Modal {
     const resultsEl = containerEl.createDiv({ cls: "evc-dry-run-results" });
 
     for (const result of this.results) {
-      // Skip mappings with no actions and no errors
-      if (result.plannedActions.length === 0 && result.errors.length === 0) {
+      // Skip mappings with no actions, no deletions, and no errors
+      if (
+        result.plannedActions.length === 0 &&
+        result.plannedDeletions.length === 0 &&
+        result.errors.length === 0
+      ) {
         continue;
       }
 
@@ -175,7 +191,7 @@ export class DryRunModal extends Modal {
     }
 
     // Group actions by direction
-    const groups = this.groupActions(result.plannedActions);
+    const groups = this.groupActions(result.plannedActions, result.plannedDeletions);
 
     // To Obsidian
     if (groups.toObsidian.length > 0) {
@@ -197,6 +213,24 @@ export class DryRunModal extends Modal {
       );
     }
 
+    // Deletions in Obsidian (FR-060)
+    if (groups.deletionsInObsidian.length > 0) {
+      this.renderDeletionGroup(
+        sectionEl,
+        "Will delete in Obsidian:",
+        groups.deletionsInObsidian
+      );
+    }
+
+    // Deletions in AI Project (FR-060)
+    if (groups.deletionsInAi.length > 0) {
+      this.renderDeletionGroup(
+        sectionEl,
+        "Will delete in AI project:",
+        groups.deletionsInAi
+      );
+    }
+
     // Skipped (collapsible)
     if (groups.skipped.length > 0) {
       this.renderSkippedGroup(sectionEl, groups.skipped);
@@ -204,13 +238,60 @@ export class DryRunModal extends Modal {
   }
 
   /**
+   * Render deletion group (FR-060)
+   */
+  private renderDeletionGroup(
+    containerEl: HTMLElement,
+    title: string,
+    deletions: DetectedDeletion[]
+  ): void {
+    const groupEl = containerEl.createDiv({ cls: "evc-dry-run-group evc-dry-run-group-delete" });
+
+    groupEl.createEl("div", {
+      text: title,
+      cls: "evc-dry-run-group-title evc-dry-run-group-title-delete",
+    });
+
+    const listEl = groupEl.createEl("ul", { cls: "evc-dry-run-list" });
+
+    for (const deletion of deletions) {
+      const itemEl = listEl.createEl("li", {
+        cls: "evc-dry-run-item evc-dry-run-item-delete",
+      });
+
+      // Delete icon
+      itemEl.createEl("span", {
+        text: "×",
+        cls: "evc-dry-run-icon evc-dry-run-icon-delete",
+      });
+
+      // File name
+      itemEl.createEl("span", {
+        text: deletion.relativePath,
+        cls: "evc-dry-run-filename",
+      });
+
+      // Reason
+      const reason = deletion.deletedFrom === "ai"
+        ? "deleted in AI project"
+        : "deleted in Obsidian";
+      itemEl.createEl("span", {
+        text: `(${reason})`,
+        cls: "evc-dry-run-reason",
+      });
+    }
+  }
+
+  /**
    * Group actions by direction
    */
-  private groupActions(actions: PlannedSyncAction[]): ActionGroup {
+  private groupActions(actions: PlannedSyncAction[], deletions: DetectedDeletion[]): ActionGroup {
     const groups: ActionGroup = {
       toObsidian: [],
       toAi: [],
       skipped: [],
+      deletionsInObsidian: [],
+      deletionsInAi: [],
     };
 
     for (const action of actions) {
@@ -220,6 +301,15 @@ export class DryRunModal extends Modal {
         groups.toObsidian.push(action);
       } else {
         groups.toAi.push(action);
+      }
+    }
+
+    // Group deletions
+    for (const deletion of deletions) {
+      if (deletion.existsIn === "obsidian") {
+        groups.deletionsInObsidian.push(deletion);
+      } else {
+        groups.deletionsInAi.push(deletion);
       }
     }
 
@@ -394,6 +484,13 @@ export class DryRunModal extends Modal {
       }
     }
     return count;
+  }
+
+  /**
+   * Get total planned deletions count (FR-060)
+   */
+  private getTotalDeletions(): number {
+    return this.results.reduce((sum, r) => sum + r.plannedDeletions.length, 0);
   }
 
   /**
