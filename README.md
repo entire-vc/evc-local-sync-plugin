@@ -4,7 +4,7 @@
 [![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22evc-local-sync%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&style=flat-square)](https://obsidian.md/plugins?id=evc-local-sync)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-> **[Download Latest Release (v1.0.0)](https://github.com/entire-vc/evc-local-sync-plugin/releases/latest)**
+> **[Download Latest Release (v1.0.1)](https://github.com/entire-vc/evc-local-sync-plugin/releases/latest)** | [Changelog](https://github.com/entire-vc/evc-local-sync-plugin/releases)
 
 Obsidian plugin for **bidirectional synchronization** of documentation between Obsidian vault and AI development projects (Claude Code, Cursor AI, VS Code with AI assistants).
 
@@ -24,6 +24,8 @@ When working with AI coding assistants, documentation gets scattered:
 - **Bidirectional sync** between AI projects and Obsidian vault
 - **Multiple sync modes**: Manual, on-change, on-startup, scheduled
 - **Smart conflict resolution**: Newer wins, AI wins, Obsidian wins, or always ask
+- **File deletion sync** — deleted files can be synced across locations (v1.0.1)
+- **Per-mapping settings** — override conflict resolution and file types per project (v1.0.1)
 - **Dry-run preview** to see changes before syncing
 - **File watching** with configurable debounce
 - **Symlink support** for complex project structures
@@ -92,8 +94,17 @@ When working with AI coding assistants, documentation gets scattered:
 | Conflict Resolution | Newer wins | How to handle file conflicts |
 | Create Backups | Enabled | Backup files before overwriting |
 | Follow Symlinks | Disabled | Follow symbolic links during sync |
+| Sync Deletions | Disabled | Sync file deletions between locations (v1.0.1) |
+| Confirm Deletions | Enabled | Confirm before deleting files (v1.0.1) |
 | File Types | .md, .canvas, .excalidraw.md | File extensions to sync |
 | Log Retention | 7 days | How long to keep sync logs |
+
+### Per-mapping Overrides (v1.0.1)
+
+Each mapping can override global settings in the "Advanced settings" section:
+- **Conflict resolution** — Use different strategy per project
+- **File types** — Sync different file types per project
+- **Exclude patterns** — Custom exclusions per project
 
 ## Conflict Resolution Strategies
 
