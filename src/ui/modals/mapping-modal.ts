@@ -10,6 +10,7 @@ import {
 } from "obsidian";
 import type { ProjectMapping, SyncDirection, ConflictResolution } from "../../settings";
 import type EVCLocalSyncPlugin from "../../main";
+import { FolderSuggestModal } from "../folder-suggest";
 
 /**
  * Modal options
@@ -152,6 +153,18 @@ export class MappingModal extends Modal {
             this.mapping.obsidianPath = value;
           });
         text.inputEl.addClass("evc-input-wide");
+      })
+      .addExtraButton((button) => {
+        button
+          .setIcon("folder")
+          .setTooltip("Browse folders")
+          .onClick(() => {
+            new FolderSuggestModal(this.app, (folder) => {
+              const folderPath = folder.path === "/" ? "" : folder.path;
+              this.obsidianPathInput.setValue(folderPath);
+              this.mapping.obsidianPath = folderPath;
+            }).open();
+          });
       });
 
     // Docs Subdirectory
