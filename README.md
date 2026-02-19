@@ -143,7 +143,7 @@ Common topics: renames/moves · case sensitivity (Windows/macOS) · watcher miss
 
 ---
 
-## Part of the EVC Ecosystem
+## Part of the Entire VC Toolbox
 
 | Product | What it does | Link |
 |---|---|---|
