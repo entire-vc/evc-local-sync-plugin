@@ -1,0 +1,64 @@
+name: Report Conflict Case
+description: Report a sync conflict or unexpected file behavior
+title: "[Conflict]: "
+labels: ["conflict-case", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Conflict edge cases are especially valuable for improving sync reliability. Thank you!
+  - type: input
+    id: version
+    attributes:
+      label: Plugin Version
+      placeholder: "e.g. 1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: "Describe the conflict: what changed on each side, what the plugin did, what you expected."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1. Edit file in vault: ...
+        2. Edit same file in local folder: ...
+        3. Trigger sync
+        4. Result: ...
+    validations:
+      required: true
+  - type: dropdown
+    id: strategy
+    attributes:
+      label: Conflict strategy used
+      options:
+        - Keep both copies
+        - Overwrite with newer
+        - Prompt on conflict
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: File details
+      description: "File type, approximate size, any special characters in filename?"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console logs
+      render: text
