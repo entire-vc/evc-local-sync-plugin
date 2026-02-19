@@ -1,0 +1,76 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below.
+  - type: input
+    id: version
+    attributes:
+      label: Plugin Version
+      description: Which version of EVC Local Sync are you using?
+      placeholder: "e.g. 1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: obsidian-version
+    attributes:
+      label: Obsidian Version
+      placeholder: "e.g. 1.7.4"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - iOS
+        - Android
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly. What did you expect vs what actually happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to reproduce the issue
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+  - type: textarea
+    id: mapping
+    attributes:
+      label: Mapping configuration
+      description: "Your sync mapping (vault path → local path). Redact sensitive paths if needed."
+      render: yaml
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console logs
+      description: "Open Developer Tools (Ctrl+Shift+I) → Console tab → paste relevant errors"
+      render: text
+  - type: dropdown
+    id: conflict
+    attributes:
+      label: Conflict strategy
+      description: Which conflict handling strategy are you using?
+      options:
+        - Keep both copies
+        - Overwrite with newer
+        - Prompt on conflict
+        - N/A
