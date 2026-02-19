@@ -89,7 +89,7 @@ export class ConflictModal extends Modal {
 
     // VS separator
     comparisonEl.createEl("div", {
-      text: "vs",
+      text: "VS",
       cls: "evc-conflict-vs",
     });
 

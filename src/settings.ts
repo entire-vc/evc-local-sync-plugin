@@ -160,6 +160,24 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
       cls: "evc-settings-description",
     });
 
+    // Issue form links
+    const linksContainer = infoContainer.createDiv({ cls: "evc-settings-links" });
+    const issueLinks: Array<{ text: string; url: string; icon: string }> = [
+      { text: "Bug report", url: "https://github.com/entire-vc/evc-local-sync-plugin/issues/new?template=bug-report.yml", icon: "bug" },
+      { text: "Feature request", url: "https://github.com/entire-vc/evc-local-sync-plugin/issues/new?template=feature-request.yml", icon: "lightbulb" },
+      { text: "Conflict case", url: "https://github.com/entire-vc/evc-local-sync-plugin/issues/new?template=conflict-case.yml", icon: "alert-triangle" },
+    ];
+    for (const link of issueLinks) {
+      const btn = linksContainer.createEl("a", {
+        cls: "evc-settings-issue-link",
+        href: link.url,
+      });
+      btn.setAttribute("target", "_blank");
+      const btnIcon = btn.createSpan({ cls: "evc-issue-link-icon" });
+      setIcon(btnIcon, link.icon);
+      btn.createSpan({ text: link.text });
+    }
+
     // GitHub link - placed directly in header (right side, at logo level)
     const githubLink = header.createEl("a", {
       cls: "evc-settings-github-link",
@@ -178,7 +196,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    * Display General Settings section
    */
   private displayGeneralSettings(containerEl: HTMLElement): void {
-    new Setting(containerEl).setName("Sync options").setHeading();
+    new Setting(containerEl).setName("Sync").setHeading();
 
     // Sync Mode
     new Setting(containerEl)
@@ -367,7 +385,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
       .setDesc("File types to sync (comma-separated, e.g., .md, .canvas)")
       .addText((text) =>
         text
-          .setPlaceholder(".md, .canvas, .excalidraw.md")
+          .setPlaceholder(".md, .canvas, .Excalidraw.md")
           .setValue(this.plugin.settings.fileTypes.join(", "))
           .onChange(async (value) => {
             this.plugin.settings.fileTypes = value
@@ -386,7 +404,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
       )
       .addText((text) =>
         text
-          .setPlaceholder("node_modules, .git, attachments")
+          .setPlaceholder("node_modules, .git")
           .setValue(this.plugin.settings.excludePatterns.join(", "))
           .onChange(async (value) => {
             this.plugin.settings.excludePatterns = value
@@ -435,7 +453,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     if (mappings.length === 0) {
       this.mappingsContainer.createEl("p", {
-        text: "No project mappings configured. Click 'Add mapping' to create one.",
+        text: "No project mappings configured. Click 'add mapping' to create one.",
         cls: "evc-no-mappings",
       });
       return;

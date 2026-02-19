@@ -112,7 +112,7 @@ export class MappingModal extends Modal {
     // Name
     new Setting(containerEl)
       .setName("Mapping name")
-      .setDesc("A friendly name for this mapping (e.g., 'My project')")
+      .setDesc("A friendly name for this mapping (e.g., 'my project')")
       .addText((text) => {
         this.nameInput = text;
         text
@@ -176,7 +176,7 @@ export class MappingModal extends Modal {
       .addText((text) => {
         this.docsSubdirInput = text;
         text
-          .setPlaceholder("docs")
+          .setPlaceholder("Docs")
           .setValue(this.mapping.docsSubdir)
           .onChange((value) => {
             this.mapping.docsSubdir = value;

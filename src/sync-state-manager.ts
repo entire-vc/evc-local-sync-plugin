@@ -1,6 +1,6 @@
 import type { App } from "obsidian";
 import type { ProjectMapping, EVCLocalSyncSettings, ConflictResolution } from "./settings";
-import * as fs from "fs";
+import * as fsPromises from "fs/promises";
 import * as path from "path";
 import * as crypto from "crypto";
 
@@ -87,22 +87,24 @@ export class SyncStateManager {
     const statePath = path.join(this.pluginDir, SYNC_STATE_FILE);
 
     try {
-      if (fs.existsSync(statePath)) {
-        const content = fs.readFileSync(statePath, "utf-8");
-        const data = JSON.parse(content) as SyncStateStore;
+      await fsPromises.access(statePath);
+      const content = await fsPromises.readFile(statePath, "utf-8");
+      const data = JSON.parse(content) as SyncStateStore;
 
-        // Validate version
-        if (data.version && data.version <= CURRENT_VERSION) {
-          this.store = data;
-        } else {
-          // Future version, reset to empty
-          console.warn("EVC Sync: sync-state.json has newer version, resetting");
-          this.store = { mappings: {}, version: CURRENT_VERSION };
-        }
+      // Validate version
+      if (data.version && data.version <= CURRENT_VERSION) {
+        this.store = data;
+      } else {
+        // Future version, reset to empty
+        console.warn("EVC Sync: sync-state.json has newer version, resetting");
+        this.store = { mappings: {}, version: CURRENT_VERSION };
       }
     } catch (error) {
-      console.error("EVC Sync: Failed to load sync state:", error);
-      // Start fresh on error
+      // ENOENT means file doesn't exist yet (first run), other errors are real failures
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        console.error("EVC Sync: Failed to load sync state:", error);
+      }
+      // Start fresh on error or missing file
       this.store = { mappings: {}, version: CURRENT_VERSION };
     }
   }
@@ -115,7 +117,7 @@ export class SyncStateManager {
 
     try {
       const content = JSON.stringify(this.store, null, 2);
-      fs.writeFileSync(statePath, content, "utf-8");
+      await fsPromises.writeFile(statePath, content, "utf-8");
     } catch (error) {
       console.error("EVC Sync: Failed to save sync state:", error);
     }
@@ -223,15 +225,8 @@ export class SyncStateManager {
    * Calculate MD5 hash of file content
    */
   static async hashFile(filePath: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      try {
-        const content = fs.readFileSync(filePath, "utf-8");
-        const hash = crypto.createHash("md5").update(content).digest("hex");
-        resolve(hash);
-      } catch (error) {
-        reject(error);
-      }
-    });
+    const content = await fsPromises.readFile(filePath, "utf-8");
+    return crypto.createHash("md5").update(content).digest("hex");
   }
 
   /**

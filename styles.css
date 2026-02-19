@@ -101,10 +101,45 @@
 }
 
 .evc-settings-description {
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 0.5rem 0;
   color: var(--text-muted);
   font-size: 0.95rem;
   line-height: 1.4;
+}
+
+.evc-settings-links {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.evc-settings-issue-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.8rem;
+  transition: all 0.15s ease;
+}
+
+.evc-settings-issue-link:hover {
+  color: var(--text-normal);
+  border-color: var(--text-muted);
+  background: var(--background-primary);
+}
+
+.evc-issue-link-icon {
+  display: flex;
+  align-items: center;
+}
+
+.evc-issue-link-icon svg {
+  width: 12px;
+  height: 12px;
 }
 
 .evc-settings-github-link {

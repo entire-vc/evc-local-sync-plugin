@@ -1148,7 +1148,7 @@ export class SyncEngine {
       const normalizedPath = normalizePath(vaultPath);
       const file = this.app.vault.getAbstractFileByPath(normalizedPath);
       if (file instanceof TFile) {
-        await this.app.vault.trash(file, true);
+        await this.app.fileManager.trashFile(file);
       }
     } else {
       // Delete AI project file

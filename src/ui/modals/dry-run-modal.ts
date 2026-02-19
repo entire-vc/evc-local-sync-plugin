@@ -380,7 +380,7 @@ export class DryRunModal extends Modal {
     });
 
     const toggleIcon = headerEl.createEl("span", {
-      text: ">",
+      text: "\u25B8",
       cls: "evc-collapsible-icon",
     });
 
@@ -421,10 +421,10 @@ export class DryRunModal extends Modal {
       const isCollapsed = contentEl.hasClass("evc-collapsible-collapsed");
       if (isCollapsed) {
         contentEl.removeClass("evc-collapsible-collapsed");
-        toggleIcon.textContent = "v";
+        toggleIcon.textContent = "\u25BE";
       } else {
         contentEl.addClass("evc-collapsible-collapsed");
-        toggleIcon.textContent = ">";
+        toggleIcon.textContent = "\u25B8";
       }
     });
   }

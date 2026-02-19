@@ -31,6 +31,7 @@ const context = await esbuild.context({
     "@lezer/highlight",
     "@lezer/lr",
     ...builtins,
+    "fsevents",
   ],
   format: "cjs",
   target: "es2018",
