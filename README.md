@@ -1,3 +1,6 @@
+![License](https://img.shields.io/github/license/entire-vc/evc-local-sync-plugin)
+![GitHub Stars](https://img.shields.io/github/stars/entire-vc/evc-local-sync-plugin)
+
 # EVC Local Sync
 
 [![GitHub release](https://img.shields.io/github/v/tag/entire-vc/evc-local-sync-plugin?style=flat-square)](https://github.com/entire-vc/evc-local-sync-plugin/releases)
@@ -103,12 +106,12 @@ Sync conflicts happen when both sides change before a sync runs.
 
 | | Copy/paste | Manual export | Git submodule | **Local Sync** |
 |---|---|---|---|---|
-| Always current | ✗ | ✗ | partial | ✅ |
-| Bidirectional | ✗ | ✗ | ✗ | ✅ |
+| Always current | ❌ | ❌ | partial | ✅ |
+| Bidirectional | ❌ | ❌ | ❌ | ✅ |
 | Conflict handling | manual | none | merge conflicts | configurable |
 | Offline / private | ✅ | ✅ | ✅ | ✅ |
 | Setup complexity | none | none | high | 3 steps |
-| AI IDE workflow | ✗ | ✗ | partial | ✅ |
+| AI IDE workflow | ❌ | ❌ | partial | ✅ |
 
 ---
 
