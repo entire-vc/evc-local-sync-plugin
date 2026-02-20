@@ -149,11 +149,21 @@ Common topics: renames/moves · case sensitivity (Windows/macOS) · watcher miss
 ## Part of the Entire VC Toolbox
 
 | Product | What it does | Link |
-|---|---|---|
-| **Local Sync** (you are here) | vault ↔ local folders, solo | this repo |
-| **Team Relay** | team collaboration + web publish | [plugin](https://github.com/entire-vc/evc-team-relay-obsidian-plugin) · [server](https://github.com/entire-vc/evc-team-relay) |
+|---------|-------------|------|
+| **Local Sync** ← you are here | Vault ↔ AI dev tools sync | this repo |
+| **Team Relay** | Self-hosted collaboration server | [repo](https://github.com/entire-vc/evc-team-relay) |
+| **Team Relay Plugin** | Obsidian plugin for Team Relay | [repo](https://github.com/entire-vc/evc-team-relay-obsidian-plugin) |
+| **Spark MCP** | MCP server for AI workflow catalog | [repo](https://github.com/entire-vc/evc-spark-mcp) |
+| **OpenClaw Skill** | AI agent ↔ vault access | [repo](https://github.com/entire-vc/evc-team-relay-openclaw-skill) |
 
 ---
+
+
+## Community
+
+- 🌐 [entire.vc](https://entire.vc)
+- 💬 [Discussions](https://github.com/entire-vc/.github/discussions)
+- 📧 in@entire.vc
 
 ## License
 
