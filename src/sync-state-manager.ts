@@ -181,10 +181,13 @@ export class SyncStateManager {
     }
 
     // Check for files deleted in AI project
+    // Map keys may be normalized (lowercased) on case-insensitive platforms,
+    // so normalize prevFile.path the same way for lookups
     for (const prevFile of previousState.aiFiles) {
-      if (!currentAiFiles.has(prevFile.path)) {
+      const key = this.normalizePathKey(prevFile.path);
+      if (!currentAiFiles.has(key)) {
         // File was deleted in AI
-        const obsFile = currentObsFiles.get(prevFile.path);
+        const obsFile = currentObsFiles.get(key);
         if (obsFile) {
           // File still exists in Obsidian - should be deleted
           deletions.push({
@@ -201,9 +204,10 @@ export class SyncStateManager {
     // Check for files deleted in Obsidian (only if bidirectional)
     if (bidirectional) {
       for (const prevFile of previousState.obsFiles) {
-        if (!currentObsFiles.has(prevFile.path)) {
+        const key = this.normalizePathKey(prevFile.path);
+        if (!currentObsFiles.has(key)) {
           // File was deleted in Obsidian
-          const aiFile = currentAiFiles.get(prevFile.path);
+          const aiFile = currentAiFiles.get(key);
           if (aiFile) {
             // File still exists in AI - should be deleted
             deletions.push({
@@ -219,6 +223,16 @@ export class SyncStateManager {
     }
 
     return deletions;
+  }
+
+  /**
+   * Normalize path for case-insensitive comparison on macOS/Windows
+   */
+  private normalizePathKey(filePath: string): string {
+    if (process.platform === "darwin" || process.platform === "win32") {
+      return filePath.toLowerCase();
+    }
+    return filePath;
   }
 
   /**

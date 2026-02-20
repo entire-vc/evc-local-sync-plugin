@@ -217,9 +217,9 @@ export class SyncEngine {
       const aiFiles = this.getFileListForMapping(aiDocsPath, mapping);
       const obsFiles = await this.getObsidianFileListForMapping(obsDocsPath, mapping);
 
-      // Create lookup maps for faster comparison
-      const aiFileMap = new Map(aiFiles.map((f) => [f.relativePath, f]));
-      const obsFileMap = new Map(obsFiles.map((f) => [f.relativePath, f]));
+      // Create lookup maps with case-insensitive keys on macOS/Windows
+      const aiFileMap = new Map(aiFiles.map((f) => [this.normalizePathKey(f.relativePath), f]));
+      const obsFileMap = new Map(obsFiles.map((f) => [this.normalizePathKey(f.relativePath), f]));
 
       // Handle deletions if enabled (FR-060)
       if (this.settings.syncDeletions) {
@@ -274,25 +274,26 @@ export class SyncEngine {
       }
 
       // Process files from AI -> Obsidian
-      for (const [relativePath, aiFile] of aiFileMap) {
-        const obsFile = obsFileMap.get(relativePath);
+      for (const [, aiFile] of aiFileMap) {
+        const obsFile = obsFileMap.get(this.normalizePathKey(aiFile.relativePath));
+        const relPath = aiFile.relativePath;
 
         if (!obsFile) {
           // File only in AI -> copy to Obsidian
           try {
-            await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relativePath);
+            await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath);
             files.push({
-              file: relativePath,
+              file: relPath,
               action: "copy",
               direction: "ai-to-obs",
               success: true,
             });
             filesCopied++;
           } catch (error) {
-            const errorMsg = `Failed to copy ${relativePath}: ${(error as Error).message}`;
+            const errorMsg = `Failed to copy ${relPath}: ${(error as Error).message}`;
             errors.push(errorMsg);
             files.push({
-              file: relativePath,
+              file: relPath,
               action: "copy",
               direction: "ai-to-obs",
               success: false,
@@ -306,7 +307,7 @@ export class SyncEngine {
           if (comparison === "same") {
             // Files are the same, skip
             files.push({
-              file: relativePath,
+              file: relPath,
               action: "skip",
               direction: "ai-to-obs",
               success: true,
@@ -315,7 +316,7 @@ export class SyncEngine {
           } else {
             // Handle conflict
             const conflictInfo: ConflictInfo = {
-              relativePath,
+              relativePath: relPath,
               aiPath: aiFile.absolutePath,
               obsidianPath: obsFile.absolutePath,
               aiMtime: new Date(aiFile.mtime),
@@ -337,19 +338,19 @@ export class SyncEngine {
 
             if (resolution.decision === "use-ai") {
               try {
-                await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relativePath);
+                await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath);
                 files.push({
-                  file: relativePath,
+                  file: relPath,
                   action: "update",
                   direction: "ai-to-obs",
                   success: true,
                 });
                 filesCopied++;
               } catch (error) {
-                const errorMsg = `Failed to update ${relativePath}: ${(error as Error).message}`;
+                const errorMsg = `Failed to update ${relPath}: ${(error as Error).message}`;
                 errors.push(errorMsg);
                 files.push({
-                  file: relativePath,
+                  file: relPath,
                   action: "update",
                   direction: "ai-to-obs",
                   success: false,
@@ -358,19 +359,19 @@ export class SyncEngine {
               }
             } else if (resolution.decision === "use-obsidian" && mapping.bidirectional) {
               try {
-                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relativePath);
+                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath);
                 files.push({
-                  file: relativePath,
+                  file: relPath,
                   action: "update",
                   direction: "obs-to-ai",
                   success: true,
                 });
                 filesCopied++;
               } catch (error) {
-                const errorMsg = `Failed to update ${relativePath}: ${(error as Error).message}`;
+                const errorMsg = `Failed to update ${relPath}: ${(error as Error).message}`;
                 errors.push(errorMsg);
                 files.push({
-                  file: relativePath,
+                  file: relPath,
                   action: "update",
                   direction: "obs-to-ai",
                   success: false,
@@ -380,7 +381,7 @@ export class SyncEngine {
             } else {
               // Skip
               files.push({
-                file: relativePath,
+                file: relPath,
                 action: "skip",
                 direction: "ai-to-obs",
                 success: true,
@@ -393,23 +394,24 @@ export class SyncEngine {
 
       // Process files from Obsidian -> AI (if bidirectional)
       if (mapping.bidirectional) {
-        for (const [relativePath, obsFile] of obsFileMap) {
-          if (!aiFileMap.has(relativePath)) {
+        for (const [, obsFile] of obsFileMap) {
+          const relPath = obsFile.relativePath;
+          if (!aiFileMap.has(this.normalizePathKey(relPath))) {
             // File only in Obsidian -> copy to AI
             try {
-              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relativePath);
+              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath);
               files.push({
-                file: relativePath,
+                file: relPath,
                 action: "copy",
                 direction: "obs-to-ai",
                 success: true,
               });
               filesCopied++;
             } catch (error) {
-              const errorMsg = `Failed to copy ${relativePath}: ${(error as Error).message}`;
+              const errorMsg = `Failed to copy ${relPath}: ${(error as Error).message}`;
               errors.push(errorMsg);
               files.push({
-                file: relativePath,
+                file: relPath,
                 action: "copy",
                 direction: "obs-to-ai",
                 success: false,
@@ -421,25 +423,26 @@ export class SyncEngine {
         }
       } else if (mapping.syncDirection === "obs-to-ai") {
         // Unidirectional: Obsidian -> AI only
-        for (const [relativePath, obsFile] of obsFileMap) {
-          const aiFile = aiFileMap.get(relativePath);
+        for (const [, obsFile] of obsFileMap) {
+          const relPath = obsFile.relativePath;
+          const aiFile = aiFileMap.get(this.normalizePathKey(relPath));
 
           if (!aiFile) {
             // File only in Obsidian -> copy to AI
             try {
-              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relativePath);
+              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath);
               files.push({
-                file: relativePath,
+                file: relPath,
                 action: "copy",
                 direction: "obs-to-ai",
                 success: true,
               });
               filesCopied++;
             } catch (error) {
-              const errorMsg = `Failed to copy ${relativePath}: ${(error as Error).message}`;
+              const errorMsg = `Failed to copy ${relPath}: ${(error as Error).message}`;
               errors.push(errorMsg);
               files.push({
-                file: relativePath,
+                file: relPath,
                 action: "copy",
                 direction: "obs-to-ai",
                 success: false,
@@ -452,19 +455,19 @@ export class SyncEngine {
 
             if (comparison !== "same" && obsFile.mtime > aiFile.mtime) {
               try {
-                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relativePath);
+                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath);
                 files.push({
-                  file: relativePath,
+                  file: relPath,
                   action: "update",
                   direction: "obs-to-ai",
                   success: true,
                 });
                 filesCopied++;
               } catch (error) {
-                const errorMsg = `Failed to update ${relativePath}: ${(error as Error).message}`;
+                const errorMsg = `Failed to update ${relPath}: ${(error as Error).message}`;
                 errors.push(errorMsg);
                 files.push({
-                  file: relativePath,
+                  file: relPath,
                   action: "update",
                   direction: "obs-to-ai",
                   success: false,
@@ -567,9 +570,9 @@ export class SyncEngine {
       const aiFiles = this.getFileListForMapping(aiDocsPath, mapping);
       const obsFiles = await this.getObsidianFileListForMapping(obsDocsPath, mapping);
 
-      // Create lookup maps
-      const aiFileMap = new Map(aiFiles.map((f) => [f.relativePath, f]));
-      const obsFileMap = new Map(obsFiles.map((f) => [f.relativePath, f]));
+      // Create lookup maps with case-insensitive keys on macOS/Windows
+      const aiFileMap = new Map(aiFiles.map((f) => [this.normalizePathKey(f.relativePath), f]));
+      const obsFileMap = new Map(obsFiles.map((f) => [this.normalizePathKey(f.relativePath), f]));
 
       // Detect planned deletions (FR-060)
       if (this.settings.syncDeletions) {
@@ -585,13 +588,14 @@ export class SyncEngine {
       }
 
       // Check AI -> Obsidian
-      for (const [relativePath, aiFile] of aiFileMap) {
-        const obsFile = obsFileMap.get(relativePath);
-        const targetPath = path.join(obsDocsPath, relativePath);
+      for (const [, aiFile] of aiFileMap) {
+        const relPath = aiFile.relativePath;
+        const obsFile = obsFileMap.get(this.normalizePathKey(relPath));
+        const targetPath = path.join(obsDocsPath, relPath);
 
         if (!obsFile) {
           plannedActions.push({
-            file: relativePath,
+            file: relPath,
             action: "copy",
             direction: "ai-to-obs",
             sourcePath: aiFile.absolutePath,
@@ -603,7 +607,7 @@ export class SyncEngine {
 
           if (comparison === "ai-newer") {
             plannedActions.push({
-              file: relativePath,
+              file: relPath,
               action: "update",
               direction: "ai-to-obs",
               sourcePath: aiFile.absolutePath,
@@ -612,7 +616,7 @@ export class SyncEngine {
             });
           } else if (comparison === "obs-newer" && !mapping.bidirectional) {
             plannedActions.push({
-              file: relativePath,
+              file: relPath,
               action: "skip",
               direction: "ai-to-obs",
               sourcePath: aiFile.absolutePath,
@@ -625,13 +629,14 @@ export class SyncEngine {
 
       // Check Obsidian -> AI (if bidirectional or obs-to-ai direction)
       if (mapping.bidirectional || mapping.syncDirection === "obs-to-ai") {
-        for (const [relativePath, obsFile] of obsFileMap) {
-          const aiFile = aiFileMap.get(relativePath);
-          const targetPath = path.join(aiDocsPath, relativePath);
+        for (const [, obsFile] of obsFileMap) {
+          const relPath = obsFile.relativePath;
+          const aiFile = aiFileMap.get(this.normalizePathKey(relPath));
+          const targetPath = path.join(aiDocsPath, relPath);
 
           if (!aiFile) {
             plannedActions.push({
-              file: relativePath,
+              file: relPath,
               action: "copy",
               direction: "obs-to-ai",
               sourcePath: obsFile.absolutePath,
@@ -643,7 +648,7 @@ export class SyncEngine {
 
             if (comparison === "obs-newer") {
               plannedActions.push({
-                file: relativePath,
+                file: relPath,
                 action: "update",
                 direction: "obs-to-ai",
                 sourcePath: obsFile.absolutePath,
@@ -1012,7 +1017,9 @@ export class SyncEngine {
     obsDocsPath: string,
     relativePath: string
   ): Promise<void> {
-    const targetPath = normalizePath(path.join(obsDocsPath, relativePath));
+    // Resolve vault path with correct folder casing (e.g. "gtm/" → "GTM/" on macOS)
+    const rawTargetPath = normalizePath(path.join(obsDocsPath, relativePath));
+    const targetPath = this.resolveVaultPath(rawTargetPath);
 
     // Ensure parent directory exists
     const parentDir = normalizePath(path.dirname(targetPath));
@@ -1168,12 +1175,21 @@ export class SyncEngine {
       return;
     }
 
+    // Check exact match first
     const folder = this.app.vault.getAbstractFileByPath(normalizedPath);
-
-    if (!folder) {
-      // Create folder recursively
-      await this.app.vault.createFolder(normalizedPath);
+    if (folder) {
+      return;
     }
+
+    // On case-insensitive platforms, check if folder exists with different casing
+    const resolvedPath = this.resolveVaultPath(normalizedPath);
+    const resolvedFolder = this.app.vault.getAbstractFileByPath(resolvedPath);
+    if (resolvedFolder) {
+      return;
+    }
+
+    // Create folder recursively
+    await this.app.vault.createFolder(normalizedPath);
   }
 
   /**
@@ -1213,5 +1229,62 @@ export class SyncEngine {
    */
   private normalizeRelativePath(relativePath: string): string {
     return relativePath.replace(/\\/g, "/");
+  }
+
+  /**
+   * Normalize path for case-insensitive comparison on macOS/Windows.
+   * These platforms use case-insensitive filesystems by default,
+   * so "gtm/FILE.md" and "GTM/FILE.md" refer to the same file.
+   */
+  private normalizePathKey(relativePath: string): string {
+    if (process.platform === "darwin" || process.platform === "win32") {
+      return relativePath.toLowerCase();
+    }
+    return relativePath;
+  }
+
+  /**
+   * Resolve a vault path using case-insensitive folder matching.
+   * On macOS/Windows, folders may exist with different casing (e.g. "GTM" vs "gtm").
+   * This method finds the actual vault-tracked casing for each path component.
+   */
+  private resolveVaultPath(targetPath: string): string {
+    if (process.platform !== "darwin" && process.platform !== "win32") {
+      return targetPath;
+    }
+
+    const parts = normalizePath(targetPath).split("/");
+    let resolved = "";
+
+    for (const part of parts) {
+      const candidatePath = resolved ? `${resolved}/${part}` : part;
+
+      // Check if exact path exists in vault
+      const existing = this.app.vault.getAbstractFileByPath(normalizePath(candidatePath));
+      if (existing) {
+        resolved = existing.path;
+        continue;
+      }
+
+      // Try case-insensitive match in parent folder
+      const parent = resolved
+        ? this.app.vault.getAbstractFileByPath(resolved)
+        : this.app.vault.getRoot();
+
+      if (parent instanceof TFolder) {
+        const match = parent.children.find(
+          (child) => child.name.toLowerCase() === part.toLowerCase()
+        );
+        if (match) {
+          resolved = match.path;
+          continue;
+        }
+      }
+
+      // No match found — use original casing
+      resolved = normalizePath(candidatePath);
+    }
+
+    return resolved;
   }
 }
