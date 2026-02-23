@@ -1,7 +1,7 @@
 {
   "id": "evc-local-sync",
   "name": "EVC Local Sync to AI Agent",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "minAppVersion": "1.4.0",
   "description": "Bidirectional sync of docs folders between your vault and AI development projects (Claude Code, Cursor AI, VS Code). Single source of truth for project documentation with minimal context overhead for AI agents.",
   "author": "EVC Team",
