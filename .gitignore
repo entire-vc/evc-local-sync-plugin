@@ -8,9 +8,12 @@ main.js.map
 # Internal documentation (not for public)
 docs/
 CLAUDE.md
+!starter-pack/docs/
+!starter-pack/**/CLAUDE.md
 
 # Claude Code configuration
 .claude/
+!starter-pack/.claude/
 
 # IDE and editor
 .vscode/
