@@ -56,6 +56,9 @@ Pending review. [Track status →](https://github.com/obsidianmd/obsidian-releas
 
 ✅ Changes now mirror in both directions.
 
+> **AI Starter Pack** — pre-configured rules for Claude Code, Cursor, and Windsurf that teach your AI agent how to work with synced `/docs`.
+> [Get the pack →](https://spark.entire.vc/assets/local-sync-starter-pack)
+
 ---
 
 ## Workflows
