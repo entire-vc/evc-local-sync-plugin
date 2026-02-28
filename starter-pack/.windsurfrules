@@ -1,0 +1,8 @@
+## /docs Sync Rules
+
+This project syncs /docs with Obsidian via [EVC Local Sync](https://github.com/entire-vc/evc-local-sync-plugin).
+
+- Read /docs before modifying specs
+- Keep /docs updated when changing architecture or requirements
+- /docs/PRD.md is the source of truth
+- Never delete /docs files without confirmation

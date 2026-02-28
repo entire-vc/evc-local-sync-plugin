@@ -1,0 +1,14 @@
+---
+description: Rules for working with /docs synced via EVC Local Sync
+globs: docs/**/*.md
+---
+
+# Documentation Sync Rules
+
+The `/docs` folder is bidirectionally synced with an Obsidian vault via [EVC Local Sync](https://github.com/entire-vc/evc-local-sync-plugin).
+
+## Rules:
+- Read `/docs` files before making changes to understand current state
+- Update `/docs` when modifying project specs or architecture
+- Never delete `/docs` files without explicit user confirmation
+- Reference `/docs/PRD.md` as the source of truth for requirements
