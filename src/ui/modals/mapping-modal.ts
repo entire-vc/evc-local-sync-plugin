@@ -132,7 +132,7 @@ export class MappingModal extends Modal {
       .addText((text) => {
         this.aiPathInput = text;
         text
-          .setPlaceholder("~/DevProjects/my-project")
+          .setPlaceholder("~/projects/my-project")
           .setValue(this.mapping.aiPath)
           .onChange((value) => {
             this.mapping.aiPath = value;

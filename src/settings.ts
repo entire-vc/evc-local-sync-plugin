@@ -152,7 +152,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     const infoContainer = header.createDiv({ cls: "evc-settings-info" });
 
     // Title
-    infoContainer.createEl("div", { text: "EVC local sync to AI agent", cls: "evc-settings-title" });
+    infoContainer.createEl("div", { text: "Local sync to AI agent", cls: "evc-settings-title" });
 
     // Description
     infoContainer.createEl("p", {
@@ -404,7 +404,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
       )
       .addText((text) =>
         text
-          .setPlaceholder("node_modules, .git")
+          .setPlaceholder("Node_modules, .git")
           .setValue(this.plugin.settings.excludePatterns.join(", "))
           .onChange(async (value) => {
             this.plugin.settings.excludePatterns = value
