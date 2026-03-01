@@ -715,12 +715,18 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
       if (!file) return;
 
       void file.text().then((content) => {
-        const config = JSON.parse(content);
+        const config = JSON.parse(content) as {
+          settings?: Partial<EVCLocalSyncSettings>;
+          mappings?: ProjectMapping[];
+        };
 
         // Validate config structure
         if (!config.settings || !config.mappings) {
           throw new Error("Invalid configuration file format");
         }
+
+        const importedSettings = config.settings;
+        const importedMappings = config.mappings;
 
         // Confirm import
         return showConfirmation(
@@ -733,15 +739,15 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
           }
 
           // Apply settings
-          const newSettings = {
+          const newSettings: EVCLocalSyncSettings = {
             ...this.plugin.settings,
-            ...config.settings,
-            mappings: config.mappings,
+            ...importedSettings,
+            mappings: importedMappings,
           };
 
           this.plugin.settings = newSettings;
           return this.plugin.saveSettings().then(() => {
-            new Notice(`Imported ${config.mappings.length} mapping(s) successfully`);
+            new Notice(`Imported ${importedMappings.length} mapping(s) successfully`);
 
             // Refresh display
             this.display();

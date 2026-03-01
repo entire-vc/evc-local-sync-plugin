@@ -296,7 +296,7 @@ export class SyncLogger {
 
       // Read file
       const content = await this.app.vault.adapter.read(logFilePath);
-      const data: StoredLogData = JSON.parse(content);
+      const data = JSON.parse(content) as StoredLogData;
 
       // Deserialize entries (convert timestamp strings to Date objects)
       this.entries = data.entries.map((e) => ({

@@ -23,9 +23,6 @@ export default defineConfig([
       "obsidianmd/ui/sentence-case": ["error", {
         ignoreRegex: ["^EVC", "^node_modules"],
       }],
-      // Disable overly strict unsafe-any rules for plugin code
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
     },
   },
 ]);

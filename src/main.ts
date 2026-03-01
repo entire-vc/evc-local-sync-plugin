@@ -159,8 +159,8 @@ export default class EVCLocalSyncPlugin extends Plugin {
    * Load plugin settings from data.json
    */
   async loadSettings(): Promise<void> {
-    const data = await this.loadData();
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+    const data = (await this.loadData()) as Partial<EVCLocalSyncSettings> | undefined;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
   }
 
   /**
