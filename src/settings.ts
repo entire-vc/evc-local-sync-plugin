@@ -404,7 +404,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
       )
       .addText((text) =>
         text
-          .setPlaceholder("Node_modules, .git")
+          .setPlaceholder("Folders to exclude")
           .setValue(this.plugin.settings.excludePatterns.join(", "))
           .onChange(async (value) => {
             this.plugin.settings.excludePatterns = value
