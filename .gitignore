@@ -6,7 +6,8 @@ main.js
 main.js.map
 
 # Internal documentation (not for public)
-docs/
+docs/*
+!docs/Troubleshooting.md
 CLAUDE.md
 !starter-pack/docs/
 !starter-pack/**/CLAUDE.md
