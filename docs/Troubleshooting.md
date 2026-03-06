@@ -155,7 +155,7 @@ The plugin creates backups before overwriting files (when enabled in settings). 
 
 If something goes wrong:
 1. Check the **sync log** (status bar → View logs) for what was changed
-2. Look for `.bak` files in the affected directory
+2. Look for `.backup-*` files in the affected directory (format: `filename.md.backup-2026-03-06T14-30-45-123Z`)
 3. Use git history in your project repo to recover previous versions
 
 ---
