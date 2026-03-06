@@ -55,7 +55,7 @@ Pending review. [Track status →](https://github.com/obsidianmd/obsidian-releas
 ✅ Changes now mirror in both directions.
 
 > **AI Starter Pack** — pre-configured rules for Claude Code, Cursor, and Windsurf that teach your AI agent how to work with synced `/docs`.
-> [Get the pack →](https://spark.entire.vc/assets/local-sync-starter-pack)
+> [Get the pack →](https://entire.vc/local-sync/)
 
 ---
 
@@ -120,7 +120,7 @@ Sync conflicts happen when both sides change before a sync runs.
 
 Local Sync is designed for solo workflows. If you need **team collaboration** or want to **publish your vault** as a website (private, protected, or public):
 
-→ [**EVC Team Relay**](https://github.com/entire-vc/evc-team-relay-obsidian-plugin) — self-hosted with web publish (free, bring your own VPS) or [hosted](https://entire.vc) (zero ops)
+→ [**EVC Team Relay**](https://github.com/entire-vc/evc-team-relay) — self-hosted with web publish (free, bring your own VPS) or [hosted](https://entire.vc/team-relay) (zero ops)
 
 **Why teams choose Team Relay:**
 - Real-time collab without Git merge conflicts
@@ -154,15 +154,17 @@ Common topics: renames/moves · case sensitivity (Windows/macOS) · watcher miss
 | **Local Sync** ← you are here | Vault ↔ AI dev tools sync | this repo |
 | **Team Relay** | Self-hosted collaboration server | [repo](https://github.com/entire-vc/evc-team-relay) |
 | **Team Relay Plugin** | Obsidian plugin for Team Relay | [repo](https://github.com/entire-vc/evc-team-relay-obsidian-plugin) |
+| **Team Relay MCP** | AI agent ↔ vault access | [repo](https://github.com/entire-vc/evc-team-relay-mcp) |
+| **Team Relay OpenClaw Skill** | AI agent ↔ vault access | [repo](https://github.com/entire-vc/evc-team-relay-openclaw-skill) |
 | **Spark MCP** | MCP server for AI workflow catalog | [repo](https://github.com/entire-vc/evc-spark-mcp) |
-| **OpenClaw Skill** | AI agent ↔ vault access | [repo](https://github.com/entire-vc/evc-team-relay-openclaw-skill) |
+
 
 ---
 
 
 ## Community
 
-- 🌐 [entire.vc](https://entire.vc)
+- 🌐 [Telegram](https://t.me/entire_vc)
 - 💬 [Discussions](https://github.com/entire-vc/.github/discussions)
 - 📧 in@entire.vc
 
