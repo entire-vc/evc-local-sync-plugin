@@ -4,6 +4,59 @@ Common issues and solutions for EVC Local Sync.
 
 ---
 
+## Reporting a bug
+
+When opening an issue, please include the following to help us resolve it quickly:
+
+1. **OS and version** (e.g., macOS 15.2, Windows 11 24H2)
+2. **Obsidian version** (Settings → About)
+3. **Plugin version** (Settings → Community plugins → EVC Local Sync)
+4. **Mapping config** (redact any private paths)
+5. **Conflict strategy** and **sync mode** you're using
+6. **Debounce interval** if relevant
+7. **Log export** — to get this:
+   - Click the EVC icon in the **status bar** → **View logs**
+   - Click **Export CSV** in the log viewer
+   - Attach the downloaded `.csv` file to your issue
+
+The CSV log contains timestamps, file paths, sync direction, actions taken, and any errors — this is the single most useful thing for diagnosing issues.
+
+---
+
+## Deletion sync — read this first
+
+> **Warning:** Deletion sync propagates file deletions across locations. A file deleted on one side will be removed from the other side on next sync.
+
+If you enable deletion sync, follow these steps to stay safe:
+
+1. **Enable backups** in settings (on by default) — the plugin creates a `.bak` copy before deleting
+2. **Enable deletion confirmation** — the plugin will show a list of pending deletions and ask before proceeding
+3. **Start with manual sync** for the first day — don't combine deletion sync with auto-sync until you're confident
+4. **Run a dry-run first** to see what would be deleted
+5. **Never test on your only copy** — use a test mapping with non-critical files first
+
+Deletions from Obsidian use the system trash (recoverable). Deletions from the AI project side use permanent `fs.unlink` — this is why backups matter.
+
+---
+
+## macOS: external folder not syncing (permissions)
+
+**Symptom:** The AI project path exists and is correct, but sync finds no files or silently does nothing. No error is shown.
+
+**Cause:** macOS restricts apps from accessing folders outside their sandbox. After macOS updates, Obsidian may lose permission to read/write external paths (Documents, Downloads, external drives, mounted volumes).
+
+**Solutions:**
+1. Open **System Settings → Privacy & Security → Files and Folders**
+2. Find **Obsidian** in the list
+3. Ensure it has access to the folder (or its parent) where your AI project lives
+4. If Obsidian is not listed, try opening a file from that location via Obsidian's "Open folder as vault" to trigger the permission prompt
+5. As a workaround, move the external folder under your home directory (`~/Projects/...`) — this usually has fewer restrictions
+6. **Restart Obsidian** after changing permissions
+
+If the issue persists after granting permissions, check Console.app for `sandbox` or `deny` messages related to Obsidian.
+
+---
+
 ## Sync not detecting changes
 
 **Symptom:** Files changed but sync shows "no changes found."
