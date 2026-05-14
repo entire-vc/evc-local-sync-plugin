@@ -4,6 +4,7 @@ import { MappingModal } from "./ui/modals/mapping-modal";
 import { showConfirmation } from "./ui/modals/confirmation-modal";
 import { EVC_LOGO_BASE64 } from "./logo";
 import { hasCustomSettings, getCustomSettingsDescription } from "./sync-state-manager";
+import { expandHome } from "./path-utils";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -792,7 +793,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
         }
 
         // Clean up AI project backups
-        const aiPath = mapping.aiPath.replace(/^~/, process.env.HOME || "");
+        const aiPath = expandHome(mapping.aiPath);
 
         if (fs.existsSync(aiPath)) {
           const walkAndDelete = (dir: string): void => {

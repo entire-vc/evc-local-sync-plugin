@@ -3,6 +3,7 @@ import * as path from "path";
 import type { App } from "obsidian";
 import type { EVCLocalSyncSettings, ProjectMapping } from "./settings";
 import { getVaultBasePath } from "./obsidian-internal";
+import { expandHome } from "./path-utils";
 
 /**
  * File change event
@@ -140,7 +141,7 @@ export class FileWatcher {
    * Get full docs path for AI project (same logic as sync-engine)
    */
   private getAiDocsPath(mapping: ProjectMapping): string {
-    const basePath = mapping.aiPath.replace(/^~/, process.env.HOME || "");
+    const basePath = expandHome(mapping.aiPath);
     if (mapping.docsSubdir && mapping.docsSubdir.trim().length > 0) {
       return path.join(basePath, mapping.docsSubdir);
     }

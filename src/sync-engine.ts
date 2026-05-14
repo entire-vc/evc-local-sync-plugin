@@ -9,6 +9,7 @@ import {
   getEffectiveExcludePatterns,
   type DetectedDeletion,
 } from "./sync-state-manager";
+import { expandHome } from "./path-utils";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -1196,7 +1197,7 @@ export class SyncEngine {
    * Get full docs path for AI project
    */
   private getAiDocsPath(mapping: ProjectMapping): string {
-    const basePath = mapping.aiPath.replace(/^~/, process.env.HOME || "");
+    const basePath = expandHome(mapping.aiPath);
     if (mapping.docsSubdir && mapping.docsSubdir.trim().length > 0) {
       return path.join(basePath, mapping.docsSubdir);
     }
