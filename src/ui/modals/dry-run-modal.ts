@@ -67,11 +67,11 @@ export class DryRunModal extends Modal {
    */
   private renderNoChanges(containerEl: HTMLElement): void {
     const noChangesEl = containerEl.createDiv({ cls: "evc-dry-run-no-changes" });
-    noChangesEl.createEl("div", {
+    noChangesEl.createDiv({
       text: "All files are in sync!",
       cls: "evc-dry-run-no-changes-title",
     });
-    noChangesEl.createEl("div", {
+    noChangesEl.createDiv({
       text: "No changes would be made.",
       cls: "evc-dry-run-no-changes-subtitle",
     });
@@ -102,38 +102,38 @@ export class DryRunModal extends Modal {
     }
 
     const totalPlanned = totalActions + totalDeletions;
-    summaryEl.createEl("span", {
+    summaryEl.createSpan({
       text: `${totalPlanned} action(s) planned: `,
       cls: "evc-dry-run-summary-text",
     });
 
     if (copyCount > 0) {
-      summaryEl.createEl("span", {
+      summaryEl.createSpan({
         text: `${copyCount} copy`,
         cls: "evc-dry-run-badge evc-dry-run-badge-copy",
       });
     }
     if (updateCount > 0) {
-      summaryEl.createEl("span", {
+      summaryEl.createSpan({
         text: `${updateCount} update`,
         cls: "evc-dry-run-badge evc-dry-run-badge-update",
       });
     }
     if (totalDeletions > 0) {
-      summaryEl.createEl("span", {
+      summaryEl.createSpan({
         text: `${totalDeletions} delete`,
         cls: "evc-dry-run-badge evc-dry-run-badge-delete",
       });
     }
     if (skipCount > 0) {
-      summaryEl.createEl("span", {
+      summaryEl.createSpan({
         text: `${skipCount} skip`,
         cls: "evc-dry-run-badge evc-dry-run-badge-skip",
       });
     }
 
     if (totalErrors > 0) {
-      summaryEl.createEl("span", {
+      summaryEl.createSpan({
         text: `${totalErrors} error(s)`,
         cls: "evc-dry-run-badge evc-dry-run-badge-error",
       });
@@ -178,12 +178,12 @@ export class DryRunModal extends Modal {
     // Render errors if any
     if (result.errors.length > 0) {
       const errorsEl = sectionEl.createDiv({ cls: "evc-dry-run-errors" });
-      errorsEl.createEl("div", {
+      errorsEl.createDiv({
         text: "Errors:",
         cls: "evc-dry-run-group-title evc-dry-run-group-title-error",
       });
       for (const error of result.errors) {
-        errorsEl.createEl("div", {
+        errorsEl.createDiv({
           text: error,
           cls: "evc-dry-run-error-item",
         });
@@ -247,7 +247,7 @@ export class DryRunModal extends Modal {
   ): void {
     const groupEl = containerEl.createDiv({ cls: "evc-dry-run-group evc-dry-run-group-delete" });
 
-    groupEl.createEl("div", {
+    groupEl.createDiv({
       text: title,
       cls: "evc-dry-run-group-title evc-dry-run-group-title-delete",
     });
@@ -260,13 +260,13 @@ export class DryRunModal extends Modal {
       });
 
       // Delete icon
-      itemEl.createEl("span", {
+      itemEl.createSpan({
         text: "×",
         cls: "evc-dry-run-icon evc-dry-run-icon-delete",
       });
 
       // File name
-      itemEl.createEl("span", {
+      itemEl.createSpan({
         text: deletion.relativePath,
         cls: "evc-dry-run-filename",
       });
@@ -275,7 +275,7 @@ export class DryRunModal extends Modal {
       const reason = deletion.deletedFrom === "ai"
         ? "deleted in AI project"
         : "deleted in Obsidian";
-      itemEl.createEl("span", {
+      itemEl.createSpan({
         text: `(${reason})`,
         cls: "evc-dry-run-reason",
       });
@@ -332,7 +332,7 @@ export class DryRunModal extends Modal {
         ? "evc-dry-run-group-title-obsidian"
         : "evc-dry-run-group-title-ai";
 
-    groupEl.createEl("div", {
+    groupEl.createDiv({
       text: title,
       cls: `evc-dry-run-group-title ${titleCls}`,
     });
@@ -346,19 +346,19 @@ export class DryRunModal extends Modal {
 
       // Action icon
       const iconText = action.action === "copy" ? "+" : "*";
-      itemEl.createEl("span", {
+      itemEl.createSpan({
         text: iconText,
         cls: `evc-dry-run-icon evc-dry-run-icon-${action.action}`,
       });
 
       // File name
-      itemEl.createEl("span", {
+      itemEl.createSpan({
         text: action.file,
         cls: "evc-dry-run-filename",
       });
 
       // Reason
-      itemEl.createEl("span", {
+      itemEl.createSpan({
         text: `(${action.reason})`,
         cls: "evc-dry-run-reason",
       });
@@ -375,16 +375,16 @@ export class DryRunModal extends Modal {
     const groupEl = containerEl.createDiv({ cls: "evc-dry-run-group evc-dry-run-group-skipped" });
 
     // Collapsible header
-    const headerEl = groupEl.createEl("div", {
+    const headerEl = groupEl.createDiv({
       cls: "evc-dry-run-group-title evc-dry-run-group-title-skip evc-collapsible-header",
     });
 
-    const toggleIcon = headerEl.createEl("span", {
+    const toggleIcon = headerEl.createSpan({
       text: "\u25B8",
       cls: "evc-collapsible-icon",
     });
 
-    headerEl.createEl("span", {
+    headerEl.createSpan({
       text: `Skipped (${actions.length} files)`,
     });
 
@@ -400,17 +400,17 @@ export class DryRunModal extends Modal {
         cls: "evc-dry-run-item evc-dry-run-item-skip",
       });
 
-      itemEl.createEl("span", {
+      itemEl.createSpan({
         text: "-",
         cls: "evc-dry-run-icon evc-dry-run-icon-skip",
       });
 
-      itemEl.createEl("span", {
+      itemEl.createSpan({
         text: action.file,
         cls: "evc-dry-run-filename",
       });
 
-      itemEl.createEl("span", {
+      itemEl.createSpan({
         text: `(${action.reason})`,
         cls: "evc-dry-run-reason",
       });
