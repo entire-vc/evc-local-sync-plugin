@@ -40,7 +40,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
   fileWatcher: FileWatcher;
   statusBar: StatusBarItem;
   ribbonIcon: RibbonIcon;
-  private scheduledSyncInterval: NodeJS.Timeout | null = null;
+  private scheduledSyncInterval: number | null = null;
 
   async onload(): Promise<void> {
     // Register custom icon
@@ -136,7 +136,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
 
     const intervalMs = this.settings.scheduledIntervalMinutes * 60 * 1000;
 
-    this.scheduledSyncInterval = setInterval(() => {
+    this.scheduledSyncInterval = activeWindow.setInterval(() => {
       console.debug("EVC Sync: Running scheduled sync...");
       void this.syncAllProjects();
     }, intervalMs);
@@ -149,7 +149,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
    */
   private stopScheduledSync(): void {
     if (this.scheduledSyncInterval) {
-      clearInterval(this.scheduledSyncInterval);
+      activeWindow.clearInterval(this.scheduledSyncInterval);
       this.scheduledSyncInterval = null;
       console.debug("EVC Sync: Scheduled sync stopped");
     }

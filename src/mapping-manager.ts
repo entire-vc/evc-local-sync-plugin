@@ -1,5 +1,6 @@
 import { App, normalizePath, TFolder, TFile } from "obsidian";
 import type { ProjectMapping, EVCLocalSyncSettings } from "./settings";
+import { expandHome } from "./path-utils";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -230,8 +231,7 @@ export class MappingManager {
     externalPath: string
   ): { exists: boolean; isDirectory: boolean } {
     try {
-      // Expand ~ to home directory
-      const expandedPath = externalPath.replace(/^~/, process.env.HOME || "");
+      const expandedPath = expandHome(externalPath);
       const stats = fs.statSync(expandedPath);
       return {
         exists: true,
@@ -270,7 +270,7 @@ export class MappingManager {
    * Get full docs path for AI project
    */
   getAiDocsPath(mapping: ProjectMapping): string {
-    const basePath = mapping.aiPath.replace(/^~/, process.env.HOME || "");
+    const basePath = expandHome(mapping.aiPath);
     if (mapping.docsSubdir && mapping.docsSubdir.trim().length > 0) {
       return path.join(basePath, mapping.docsSubdir);
     }

@@ -16,6 +16,8 @@ export default defineConfig([
         ...globals.browser,
         ...globals.node,
         NodeJS: "readonly",
+        activeWindow: "readonly",
+        activeDocument: "readonly",
       },
     },
     rules: {

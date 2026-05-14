@@ -152,7 +152,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     const infoContainer = header.createDiv({ cls: "evc-settings-info" });
 
     // Title
-    infoContainer.createEl("div", { text: "Local sync to AI agent", cls: "evc-settings-title" });
+    infoContainer.createDiv({ text: "Local sync to AI agent", cls: "evc-settings-title" });
 
     // Description
     infoContainer.createEl("p", {
@@ -493,11 +493,11 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
       // Name (with custom settings indicator)
       const nameCell = row.createEl("td");
-      nameCell.createEl("span", { text: mapping.name });
+      nameCell.createSpan({ text: mapping.name });
 
       // Show indicator if mapping has custom settings (FR-061, FR-062)
       if (hasCustomSettings(mapping)) {
-        const indicator = nameCell.createEl("span", {
+        const indicator = nameCell.createSpan({
           text: " ⚙",
           cls: "evc-custom-settings-indicator",
         });
@@ -507,14 +507,14 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
       // AI Path (truncated)
       const aiPathCell = row.createEl("td", { cls: "evc-path-cell" });
-      aiPathCell.createEl("span", {
+      aiPathCell.createSpan({
         text: this.truncatePath(mapping.aiPath),
         attr: { title: mapping.aiPath },
       });
 
       // Obsidian Path (truncated)
       const obsPathCell = row.createEl("td", { cls: "evc-path-cell" });
-      obsPathCell.createEl("span", {
+      obsPathCell.createSpan({
         text: this.truncatePath(mapping.obsidianPath),
         attr: { title: mapping.obsidianPath },
       });
@@ -691,12 +691,12 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     const blob = new Blob([jsonContent], { type: "application/json" });
     const url = URL.createObjectURL(blob);
 
-    const link = document.createElement("a");
+    const link = activeDocument.createElement("a");
     link.href = url;
     link.download = `evc-sync-config-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
+    activeDocument.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    activeDocument.body.removeChild(link);
     URL.revokeObjectURL(url);
 
     new Notice("Configuration exported successfully");
@@ -706,7 +706,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    * Import configuration from JSON file
    */
   private importConfiguration(): void {
-    const input = document.createElement("input");
+    const input = activeDocument.createElement("input");
     input.type = "file";
     input.accept = ".json";
 

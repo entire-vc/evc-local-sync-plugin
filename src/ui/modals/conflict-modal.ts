@@ -62,7 +62,7 @@ export class ConflictModal extends Modal {
    */
   private renderFilePath(containerEl: HTMLElement): void {
     const pathEl = containerEl.createDiv({ cls: "evc-conflict-path" });
-    pathEl.createEl("span", {
+    pathEl.createSpan({
       text: "File: ",
       cls: "evc-conflict-path-label",
     });
@@ -88,7 +88,7 @@ export class ConflictModal extends Modal {
     });
 
     // VS separator
-    comparisonEl.createEl("div", {
+    comparisonEl.createDiv({
       text: "VS",
       cls: "evc-conflict-vs",
     });
@@ -112,13 +112,13 @@ export class ConflictModal extends Modal {
 
     if (aiTime > obsTime) {
       aiEl.addClass("evc-conflict-version-newer");
-      aiEl.createEl("span", {
+      aiEl.createSpan({
         text: "(newer)",
         cls: "evc-conflict-newer-badge",
       });
     } else if (obsTime > aiTime) {
       obsEl.addClass("evc-conflict-version-newer");
-      obsEl.createEl("span", {
+      obsEl.createSpan({
         text: "(newer)",
         cls: "evc-conflict-newer-badge",
       });
@@ -137,33 +137,33 @@ export class ConflictModal extends Modal {
     // Modified time
     const mtime = info.mtime instanceof Date ? info.mtime : new Date(info.mtime);
     const mtimeRow = detailsEl.createDiv({ cls: "evc-conflict-detail-row" });
-    mtimeRow.createEl("span", {
+    mtimeRow.createSpan({
       text: "Modified:",
       cls: "evc-conflict-detail-label",
     });
-    mtimeRow.createEl("span", {
+    mtimeRow.createSpan({
       text: this.formatDateTime(mtime),
       cls: "evc-conflict-detail-value",
     });
 
     // Size
     const sizeRow = detailsEl.createDiv({ cls: "evc-conflict-detail-row" });
-    sizeRow.createEl("span", {
+    sizeRow.createSpan({
       text: "Size:",
       cls: "evc-conflict-detail-label",
     });
-    sizeRow.createEl("span", {
+    sizeRow.createSpan({
       text: this.formatFileSize(info.size),
       cls: "evc-conflict-detail-value",
     });
 
     // Path (truncated)
     const pathRow = detailsEl.createDiv({ cls: "evc-conflict-detail-row" });
-    pathRow.createEl("span", {
+    pathRow.createSpan({
       text: "Path:",
       cls: "evc-conflict-detail-label",
     });
-    pathRow.createEl("span", {
+    pathRow.createSpan({
       text: this.truncatePath(info.path),
       cls: "evc-conflict-detail-value evc-conflict-detail-path evc-cursor-help",
       attr: { title: info.path },

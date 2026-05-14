@@ -168,8 +168,8 @@ export class SyncStateManager {
     mappingId: string,
     currentAiFiles: Map<string, { absolutePath: string }>,
     currentObsFiles: Map<string, { absolutePath: string }>,
-    aiDocsPath: string,
-    obsDocsPath: string,
+    _aiDocsPath: string,
+    _obsDocsPath: string,
     bidirectional: boolean
   ): DetectedDeletion[] {
     const deletions: DetectedDeletion[] = [];

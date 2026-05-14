@@ -20,7 +20,7 @@ export class StatusBarItem {
   private plugin: EVCLocalSyncPlugin;
   private statusBarEl: HTMLElement | null = null;
   private currentStatus: SyncStatus = "idle";
-  private statusTimeout: NodeJS.Timeout | null = null;
+  private statusTimeout: number | null = null;
 
   constructor(plugin: EVCLocalSyncPlugin) {
     this.plugin = plugin;
@@ -58,7 +58,7 @@ export class StatusBarItem {
 
     // Clear any pending timeout
     if (this.statusTimeout) {
-      clearTimeout(this.statusTimeout);
+      activeWindow.clearTimeout(this.statusTimeout);
       this.statusTimeout = null;
     }
 
@@ -85,7 +85,7 @@ export class StatusBarItem {
         setIcon(iconEl, "check-circle");
         iconEl.addClass("evc-status-success");
         // Return to idle/watching after 3 seconds
-        this.statusTimeout = setTimeout(() => {
+        this.statusTimeout = activeWindow.setTimeout(() => {
           if (this.plugin.settings.syncMode === "on-change" && this.plugin.fileWatcher?.isActive()) {
             this.setStatus("watching");
           } else {
@@ -98,7 +98,7 @@ export class StatusBarItem {
         setIcon(iconEl, "alert-circle");
         iconEl.addClass("evc-status-error");
         // Return to idle/watching after 5 seconds
-        this.statusTimeout = setTimeout(() => {
+        this.statusTimeout = activeWindow.setTimeout(() => {
           if (this.plugin.settings.syncMode === "on-change" && this.plugin.fileWatcher?.isActive()) {
             this.setStatus("watching");
           } else {
@@ -186,7 +186,7 @@ export class StatusBarItem {
    */
   destroy(): void {
     if (this.statusTimeout) {
-      clearTimeout(this.statusTimeout);
+      activeWindow.clearTimeout(this.statusTimeout);
       this.statusTimeout = null;
     }
     this.statusBarEl?.remove();

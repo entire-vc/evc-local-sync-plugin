@@ -102,12 +102,12 @@ export class LogViewerModal extends Modal {
 
     if (entries.length === 0) {
       const emptyEl = this.tableContainer.createDiv({ cls: "evc-log-empty" });
-      emptyEl.createEl("div", {
+      emptyEl.createDiv({
         text: this.logger.getCount() === 0 ? "No logs yet" : "No matching logs",
         cls: "evc-log-empty-title",
       });
       if (this.logger.getCount() > 0) {
-        emptyEl.createEl("div", {
+        emptyEl.createDiv({
           text: "Try adjusting your filter or search",
           cls: "evc-log-empty-subtitle",
         });
@@ -157,21 +157,21 @@ export class LogViewerModal extends Modal {
         entry.direction === "ai-to-obs"
           ? "evc-log-direction-ai-to-obs"
           : "evc-log-direction-obs-to-ai";
-      dirCell.createEl("span", {
+      dirCell.createSpan({
         text: dirText,
         cls: dirClass,
       });
 
       // File
       const fileCell = row.createEl("td", { cls: "evc-log-cell-file" });
-      fileCell.createEl("span", {
+      fileCell.createSpan({
         text: entry.file,
         attr: { title: entry.file },
       });
 
       // Action
       const actionCell = row.createEl("td", { cls: "evc-log-cell-action" });
-      actionCell.createEl("span", {
+      actionCell.createSpan({
         text: entry.action,
         cls: `evc-log-action evc-log-action-${entry.action}`,
       });
@@ -179,12 +179,12 @@ export class LogViewerModal extends Modal {
       // Status
       const statusCell = row.createEl("td", { cls: "evc-log-cell-status" });
       if (entry.success) {
-        statusCell.createEl("span", {
+        statusCell.createSpan({
           text: "OK",
           cls: "evc-log-status-success",
         });
       } else {
-        const errorSpan = statusCell.createEl("span", {
+        const errorSpan = statusCell.createSpan({
           text: "Error",
           cls: "evc-log-status-error",
           attr: { title: entry.error || "Unknown error" },
@@ -329,7 +329,7 @@ export class LogViewerModal extends Modal {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
 
-    const link = document.createElement("a");
+    const link = activeDocument.createElement("a");
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
@@ -337,9 +337,9 @@ export class LogViewerModal extends Modal {
     );
     link.addClass("evc-hidden");
 
-    document.body.appendChild(link);
+    activeDocument.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    activeDocument.body.removeChild(link);
 
     URL.revokeObjectURL(url);
 
