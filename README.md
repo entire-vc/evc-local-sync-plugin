@@ -54,9 +54,6 @@ Pending review. [Track status →](https://github.com/obsidianmd/obsidian-releas
 
 ✅ Changes now mirror in both directions.
 
-> **AI Starter Pack** — pre-configured rules for Claude Code, Cursor, and Windsurf that teach your AI agent how to work with synced `/docs`.
-> [Get the pack →](https://entire.vc/local-sync/)
-
 ---
 
 ## Workflows
@@ -120,12 +117,7 @@ Sync conflicts happen when both sides change before a sync runs.
 
 Local Sync is designed for solo workflows. If you need **team collaboration** or want to **publish your vault** as a website (private, protected, or public):
 
-→ [**EVC Team Relay**](https://github.com/entire-vc/evc-team-relay) — self-hosted with web publish (free, bring your own VPS) or [hosted](https://entire.vc/team-relay) (zero ops)
-
-**Why teams choose Team Relay:**
-- Real-time collab without Git merge conflicts
-- Web publish: share vault as a beautiful website (internal wiki, client portal, or public docs)
-- Flat pricing instead of $8/user/month (Notion) or $12/user/month (GitBook)
+→ [**EVC Team Relay**](https://github.com/entire-vc/relay-obsidian-plugin) — self-hosted collaborative editing for Obsidian teams.
 
 ---
 
@@ -147,24 +139,8 @@ Common topics: renames/moves · case sensitivity (Windows/macOS) · watcher miss
 
 ---
 
-## Part of the Entire VC Toolbox
-
-| Product | What it does | Link |
-|---------|-------------|------|
-| **Local Sync** ← you are here | Vault ↔ AI dev tools sync | this repo |
-| **Team Relay** | Self-hosted collaboration server | [repo](https://github.com/entire-vc/evc-team-relay) |
-| **Team Relay Plugin** | Obsidian plugin for Team Relay | [repo](https://github.com/entire-vc/evc-team-relay-obsidian-plugin) |
-| **Team Relay MCP** | AI agent ↔ vault access | [repo](https://github.com/entire-vc/evc-team-relay-mcp) |
-| **Team Relay OpenClaw Skill** | AI agent ↔ vault access | [repo](https://github.com/entire-vc/evc-team-relay-openclaw-skill) |
-| **Spark MCP** | MCP server for AI workflow catalog | [repo](https://github.com/entire-vc/evc-spark-mcp) |
-
-
----
-
-
 ## Community
 
-- 🌐 [Telegram](https://t.me/entire_vc)
 - 💬 [Discussions](https://github.com/entire-vc/.github/discussions)
 - 📧 in@entire.vc
 
