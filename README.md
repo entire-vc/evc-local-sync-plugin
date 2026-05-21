@@ -1,9 +1,5 @@
 # EVC Local Sync
 
-[![GitHub release](https://img.shields.io/github/v/tag/entire-vc/evc-local-sync-plugin?style=flat-square)](https://github.com/entire-vc/evc-local-sync-plugin/releases)
-[![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22evc-local-sync%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&style=flat-square)](https://obsidian.md/plugins?id=evc-local-sync)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![GitHub Stars](https://img.shields.io/github/stars/entire-vc/evc-local-sync-plugin?style=flat-square)](https://github.com/entire-vc/evc-local-sync-plugin)
 
 **Keep your project `/docs` and Obsidian notes always in sync — bidirectional, local-first, no copy/paste.**
 
@@ -27,20 +23,21 @@ Local Sync fixes this: **bidirectional, automatic, local-first.**
 
 ## Install
 
-### Option A — BRAT (available now, recommended)
-1. Install **BRAT**: *Settings → Community plugins → Browse → "BRAT" → Install*
-2. Open BRAT: *Settings → BRAT → Add beta plugin*
-3. Paste repo URL: `https://github.com/entire-vc/evc-local-sync-plugin`
-4. Enable: *Settings → Community plugins → EVC Local Sync → Enable*
+1. *Settings → Community plugins → Browse* → search **"EVC Local Sync"**
+2. **Install**, then **Enable**
 
-### Option B — Community Plugins
-Pending review. [Track status →](https://github.com/obsidianmd/obsidian-releases/pull/9908)
+Or open directly: `obsidian://show-plugin?id=evc-local-sync`  
+Plugin page: https://obsidian.md/plugins?id=evc-local-sync
 
-### Option C — Manual
+<details>
+<summary>Manual install</summary>
+
 1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/entire-vc/evc-local-sync-plugin/releases)
 2. Create folder `.obsidian/plugins/evc-local-sync/` in your vault
 3. Copy downloaded files to this folder
 4. Enable in *Settings → Community plugins*
+
+</details>
 
 ---
 
@@ -117,7 +114,7 @@ Sync conflicts happen when both sides change before a sync runs.
 
 Local Sync is designed for solo workflows. If you need **team collaboration** or want to **publish your vault** as a website (private, protected, or public):
 
-→ [**EVC Team Relay**](https://github.com/entire-vc/relay-obsidian-plugin) — self-hosted collaborative editing for Obsidian teams.
+→ [**EVC Team Relay**](https://github.com/entire-vc/evc-team-relay-obsidian-plugin) — self-hosted collaborative editing for Obsidian teams.
 
 ---
 
