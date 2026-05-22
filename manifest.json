@@ -1,9 +1,9 @@
 {
   "id": "evc-local-sync",
   "name": "EVC Local Sync to AI Agent",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "minAppVersion": "1.6.6",
-  "description": "Bidirectional sync between an Obsidian vault folder and external project docs folders, keeping notes and project documentation in one place.",
+  "description": "Bidirectional sync between a vault folder and external project docs folders, keeping notes and project documentation in one place.",
   "author": "EVC Team",
   "authorUrl": "https://github.com/entire-vc",
   "fundingUrl": "https://github.com/sponsors/entire-vc",
