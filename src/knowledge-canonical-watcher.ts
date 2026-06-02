@@ -178,7 +178,7 @@ export class KnowledgeCanonicalWatcher {
             value: content.slice(0, 4000),
             category: "canonical",
             tags: ["obsidian", "knowledge", "source:obsidian"],
-            source_url: `obsidian://open?vault=Rogozhin&file=${encodeURIComponent(relPath)}`,
+            source_url: `obsidian://open?vault=${encodeURIComponent(this.plugin.app.vault.getName())}&file=${encodeURIComponent(relPath)}`,
           }),
         }
       );
