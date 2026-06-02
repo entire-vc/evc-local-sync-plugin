@@ -25,6 +25,7 @@ import { ConflictModal } from "./ui/modals/conflict-modal";
 import { StatusBarItem } from "./ui/status-bar";
 import { RibbonIcon } from "./ui/ribbon-icon";
 import type { ConflictInfo, ResolutionDecision } from "./conflict-resolver";
+import { KnowledgeCanonicalWatcher } from "./knowledge-canonical-watcher";
 
 /**
  * EVC Local Sync to AI Agent
@@ -41,6 +42,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
   statusBar: StatusBarItem;
   ribbonIcon: RibbonIcon;
   private scheduledSyncInterval: number | null = null;
+  private knowledgeWatcher: KnowledgeCanonicalWatcher;
 
   async onload(): Promise<void> {
     // Register custom icon
@@ -75,6 +77,10 @@ export default class EVCLocalSyncPlugin extends Plugin {
 
     // Register settings tab
     this.addSettingTab(new EVCLocalSyncSettingTab(this.app, this));
+
+    // Register Knowledge canonical watcher (additive, vault events only)
+    this.knowledgeWatcher = new KnowledgeCanonicalWatcher(this);
+    this.knowledgeWatcher.register();
 
     // Register commands
     this.registerCommands();
