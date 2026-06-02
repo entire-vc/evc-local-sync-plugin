@@ -70,6 +70,15 @@ export interface EVCLocalSyncSettings {
   syncDeletions: boolean;
   /** Confirm before deleting files (FR-060) */
   confirmDeletions: boolean;
+  /** Enable Knowledge canonical push to TR share + Mesh */
+  knowledgeCanonicalEnabled: boolean;
+  meshApiKey: string;
+  meshBaseUrl: string;
+  trShareId: string;
+  trEmail: string;
+  trPassword: string;
+  trBaseUrl: string;
+  knowledgeFolderProjectMap: Array<{ prefix: string; projectId: string }>;
 }
 
 /**
@@ -96,6 +105,14 @@ export const DEFAULT_SETTINGS: EVCLocalSyncSettings = {
   logRetentionDays: 7,
   syncDeletions: false,
   confirmDeletions: true,
+  knowledgeCanonicalEnabled: false,
+  meshApiKey: "",
+  meshBaseUrl: "https://mesh.entire.host",
+  trShareId: "30263fd4-7842-468d-a8d2-e397e9131817",
+  trEmail: "",
+  trPassword: "",
+  trBaseUrl: "https://cp.tr.entire.vc",
+  knowledgeFolderProjectMap: [],
 };
 
 /**
@@ -126,6 +143,9 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
 
     // Project Mappings Section
     this.displayMappingsSettings(containerEl);
+
+    // Knowledge Canonical Section
+    this.displayKnowledgeCanonicalSettings(containerEl);
 
     // Actions Section
     this.displayActionsSection(containerEl);
@@ -596,6 +616,106 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
       },
     });
     modal.open();
+  }
+
+  /**
+   * Display Knowledge Canonical section
+   */
+  private displayKnowledgeCanonicalSettings(containerEl: HTMLElement): void {
+    new Setting(containerEl).setName("Knowledge canonical").setHeading();
+
+    new Setting(containerEl)
+      .setName("Enable knowledge canonical sync")
+      .setDesc(
+        "Push files under 'Entire VC/Knowledge/' to Team Relay share and Mesh canonical store on save"
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.knowledgeCanonicalEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.knowledgeCanonicalEnabled = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Mesh API key")
+      .setDesc("X-Agent-Key for Mesh canonical push")
+      .addText((text) =>
+        text
+          .setPlaceholder("Agent key")
+          .setValue(this.plugin.settings.meshApiKey)
+          .onChange(async (value) => {
+            this.plugin.settings.meshApiKey = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Mesh base URL")
+      .setDesc("Default: https://mesh.entire.host")
+      .addText((text) =>
+        text
+          .setPlaceholder("https://mesh.entire.host")
+          .setValue(this.plugin.settings.meshBaseUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.meshBaseUrl = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Team Relay base URL")
+      .setDesc("Default: https://cp.tr.entire.vc")
+      .addText((text) =>
+        text
+          .setPlaceholder("https://cp.tr.entire.vc")
+          .setValue(this.plugin.settings.trBaseUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.trBaseUrl = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Team Relay share ID")
+      .setDesc("UUID of the Knowledge folder share")
+      .addText((text) =>
+        text
+          .setPlaceholder("30263fd4-7842-468d-a8d2-e397e9131817")
+          .setValue(this.plugin.settings.trShareId)
+          .onChange(async (value) => {
+            this.plugin.settings.trShareId = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Team Relay email")
+      .setDesc("Login email for Team Relay")
+      .addText((text) =>
+        text
+          .setPlaceholder("user@entire.vc")
+          .setValue(this.plugin.settings.trEmail)
+          .onChange(async (value) => {
+            this.plugin.settings.trEmail = value.trim();
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Team Relay password")
+      .setDesc("Login password for Team Relay (stored in vault data, not synced)")
+      .addText((text) => {
+        text.inputEl.type = "password";
+        text
+          .setPlaceholder("Password")
+          .setValue(this.plugin.settings.trPassword)
+          .onChange(async (value) => {
+            this.plugin.settings.trPassword = value;
+            await this.plugin.saveSettings();
+          });
+      });
   }
 
   /**
