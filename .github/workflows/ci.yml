@@ -1,9 +1,9 @@
 # CI — EVC Local Sync Obsidian Plugin
 # Based on F3 ci-ts-plugin template (bob/docs/ci-templates/ci-ts-plugin.yml)
 #
-# CI_MODE repo variable (Settings → Variables):
-#   REPORT  — failures annotate the PR but do NOT block merge (default, Phase 1 burn-in)
-#   ENFORCE — failures block merge (flip after 3-day green burn-in)
+# Burn-in mode: all jobs use continue-on-error: true (non-blocking REPORT).
+# To flip to ENFORCE: set continue-on-error: false on each job and set
+# CI_MODE=ENFORCE in repo Settings → Variables → Actions.
 
 name: CI
 
@@ -11,10 +11,6 @@ on:
   pull_request:
   push:
     branches: [main]
-
-env:
-  NODE_VERSION: "20"
-  COVERAGE_THRESHOLD: "80"
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -26,13 +22,13 @@ jobs:
   type-check:
     name: "TypeScript type-check"
     runs-on: ubuntu-latest
-    continue-on-error: ${{ vars.CI_MODE != 'ENFORCE' }}
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "20"
           cache: npm
       - run: npm ci
       - name: tsc --noEmit
@@ -40,15 +36,15 @@ jobs:
 
   # ── Unit + integration tests + coverage ────────────────────────────────────
   unit-coverage:
-    name: "Jest (unit + integration) ≥${{ env.COVERAGE_THRESHOLD }}% coverage"
+    name: "Jest (unit + integration) >= 80% coverage"
     runs-on: ubuntu-latest
-    continue-on-error: ${{ vars.CI_MODE != 'ENFORCE' }}
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "20"
           cache: npm
       - run: npm ci
 
@@ -56,7 +52,7 @@ jobs:
         run: |
           npx jest \
             --coverage \
-            --coverageThreshold='{"global":{"lines":${{ env.COVERAGE_THRESHOLD }},"branches":${{ env.COVERAGE_THRESHOLD }}}}' \
+            --coverageThreshold='{"global":{"lines":80,"branches":80}}' \
             --forceExit \
             --passWithNoTests
 
@@ -70,13 +66,13 @@ jobs:
   build-smoke:
     name: "Build + smoke"
     runs-on: ubuntu-latest
-    continue-on-error: ${{ vars.CI_MODE != 'ENFORCE' }}
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "20"
           cache: npm
       - run: npm ci
       - name: Build plugin
@@ -93,20 +89,20 @@ jobs:
   lint:
     name: "ESLint"
     runs-on: ubuntu-latest
-    continue-on-error: ${{ vars.CI_MODE != 'ENFORCE' }}
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "20"
           cache: npm
       - run: npm ci
       - run: npm run lint
 
   # ── Gate ────────────────────────────────────────────────────────────────────
   ci-gate:
-    name: "CI gate (${{ vars.CI_MODE || 'REPORT' }} mode)"
+    name: "CI gate"
     runs-on: ubuntu-latest
     needs: [type-check, unit-coverage, build-smoke, lint]
     if: always()
