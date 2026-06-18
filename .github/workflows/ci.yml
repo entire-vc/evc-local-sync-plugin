@@ -1,0 +1,125 @@
+# CI — EVC Local Sync Obsidian Plugin
+# Based on F3 ci-ts-plugin template (bob/docs/ci-templates/ci-ts-plugin.yml)
+#
+# Burn-in mode: all jobs use continue-on-error: true (non-blocking REPORT).
+# To flip to ENFORCE: set continue-on-error: false on each job and set
+# CI_MODE=ENFORCE in repo Settings → Variables → Actions.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+
+  # ── Type-check ──────────────────────────────────────────────────────────────
+  type-check:
+    name: "TypeScript type-check"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: tsc --noEmit
+        run: npx tsc --noEmit --skipLibCheck
+
+  # ── Unit + integration tests + coverage ────────────────────────────────────
+  unit-coverage:
+    name: "Jest (unit + integration) + coverage report"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+
+      - name: Run Jest with coverage
+        run: |
+          npx jest \
+            --coverage \
+            --forceExit \
+            --passWithNoTests
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jest-coverage-local-sync
+          path: coverage/
+
+  # ── Build smoke ─────────────────────────────────────────────────────────────
+  build-smoke:
+    name: "Build + smoke"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: Build plugin
+        run: npm run build
+      - name: Verify main.js produced
+        run: test -f main.js && echo "build OK"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-sync-dist
+          path: main.js
+
+  # ── Lint ────────────────────────────────────────────────────────────────────
+  lint:
+    name: "ESLint"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  # ── Gate ────────────────────────────────────────────────────────────────────
+  ci-gate:
+    name: "CI gate"
+    runs-on: ubuntu-latest
+    needs: [type-check, unit-coverage, build-smoke, lint]
+    if: always()
+    steps:
+      - name: Check outcomes
+        run: |
+          MODE="${{ vars.CI_MODE || 'REPORT' }}"
+          TC="${{ needs.type-check.result }}"
+          UC="${{ needs.unit-coverage.result }}"
+          BS="${{ needs.build-smoke.result }}"
+          LN="${{ needs.lint.result }}"
+          echo "Mode=$MODE  type-check=$TC  unit-coverage=$UC  build-smoke=$BS  lint=$LN"
+          if [ "$MODE" = "ENFORCE" ]; then
+            if [ "$TC" != "success" ] || [ "$UC" != "success" ] || \
+               [ "$BS" != "success" ] || [ "$LN" != "success" ]; then
+              echo "::error::One or more CI gates failed in ENFORCE mode."
+              exit 1
+            fi
+          else
+            echo "REPORT mode — failures are informational. Flip CI_MODE=ENFORCE after 3-day green burn-in."
+          fi
