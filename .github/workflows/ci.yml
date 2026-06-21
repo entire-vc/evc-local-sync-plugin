@@ -99,11 +99,55 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
+  # ── Manifest version check ──────────────────────────────────────────────────
+  manifest-check:
+    name: "manifest.json version sync + monotonicity"
+    runs-on: ubuntu-latest
+    continue-on-error: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify manifest.json matches package.json
+        run: |
+          PKG_VER=$(node -p "require('./package.json').version")
+          MFT_VER=$(node -p "require('./manifest.json').version")
+          MFT_MIN=$(node -p "require('./manifest.json').minAppVersion")
+          echo "package.json:   $PKG_VER"
+          echo "manifest.json:  $MFT_VER  (minAppVersion: $MFT_MIN)"
+          if [ "$PKG_VER" != "$MFT_VER" ]; then
+            echo "::error::manifest.json version ($MFT_VER) != package.json version ($PKG_VER). Manually fix manifest.json."
+            exit 1
+          fi
+          if ! grep -q "\"$MFT_VER\"" versions.json; then
+            echo "::error::versions.json is missing entry for $MFT_VER. Add it before releasing."
+            exit 1
+          fi
+          echo "OK: manifest.json, package.json, versions.json all agree on $PKG_VER"
+
+      - name: Monotonicity guard — version must be strictly greater than latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST_TAG=$(gh api /repos/${{ github.repository }}/releases/latest --jq '.tag_name' 2>/dev/null || echo "0.0.0")
+          LATEST_VER="${LATEST_TAG#v}"
+          CUR_VER=$(node -p "require('./manifest.json').version")
+          echo "Latest published release: $LATEST_VER"
+          echo "Current manifest version: $CUR_VER"
+          version_gt() {
+            [ "$(printf '%s\n%s' "$1" "$2" | sort -V | tail -1)" = "$1" ] && [ "$1" != "$2" ]
+          }
+          if ! version_gt "$CUR_VER" "$LATEST_VER"; then
+            echo "::error::Version $CUR_VER is not strictly greater than latest published release $LATEST_VER. Bump the version monotonically."
+            exit 1
+          fi
+          echo "OK: $CUR_VER > $LATEST_VER (monotonically increasing)"
+
   # ── Gate ────────────────────────────────────────────────────────────────────
   ci-gate:
     name: "CI gate"
     runs-on: ubuntu-latest
-    needs: [type-check, unit-coverage, build-smoke, lint]
+    needs: [type-check, unit-coverage, build-smoke, lint, manifest-check]
     if: always()
     steps:
       - name: Check outcomes
@@ -113,7 +157,12 @@ jobs:
           UC="${{ needs.unit-coverage.result }}"
           BS="${{ needs.build-smoke.result }}"
           LN="${{ needs.lint.result }}"
-          echo "Mode=$MODE  type-check=$TC  unit-coverage=$UC  build-smoke=$BS  lint=$LN"
+          MC="${{ needs.manifest-check.result }}"
+          echo "Mode=$MODE  type-check=$TC  unit-coverage=$UC  build-smoke=$BS  lint=$LN  manifest-check=$MC"
+          if [ "$MC" != "success" ]; then
+            echo "::error::manifest-check always enforced (version drift + monotonicity prevention)."
+            exit 1
+          fi
           if [ "$MODE" = "ENFORCE" ]; then
             if [ "$TC" != "success" ] || [ "$UC" != "success" ] || \
                [ "$BS" != "success" ] || [ "$LN" != "success" ]; then
