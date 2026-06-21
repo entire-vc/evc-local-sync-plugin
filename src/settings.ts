@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice, ButtonComponent, setIcon } from "obsidian";
+import { App, PluginSettingTab, Setting, Notice, ButtonComponent } from "obsidian";
 import type EVCLocalSyncPlugin from "./main";
 import { MappingModal } from "./ui/modals/mapping-modal";
 import { showConfirmation } from "./ui/modals/confirmation-modal";
@@ -131,66 +131,69 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     this.displayActionsSection(containerEl);
   }
 
-  /**
-   * Display header section with logo, title, description, and GitHub link
-   */
   private displayHeader(containerEl: HTMLElement): void {
     const header = containerEl.createDiv({ cls: "evc-settings-header" });
 
-    // Icon container with PNG logo
-    const iconContainer = header.createDiv({ cls: "evc-settings-icon" });
-    iconContainer.createEl("img", {
-      attr: {
-        src: EVC_LOGO_BASE64,
-        alt: "EVC Logo",
-        width: "48",
-        height: "48",
+    // Top row: logo + title/desc + ghost icon buttons
+    const top = header.createDiv({ cls: "evc-header-top" });
+
+    top.createEl("img", {
+      attr: { src: EVC_LOGO_BASE64, alt: "EVC", width: "32", height: "32" },
+      cls: "evc-header-logo",
+    });
+
+    const text = top.createDiv({ cls: "evc-header-text" });
+    text.createDiv({ text: "Local sync to AI agent", cls: "evc-header-title" });
+    text.createDiv({ text: "Bidirectional sync between Obsidian and AI development projects", cls: "evc-header-desc" });
+
+    const actions = top.createDiv({ cls: "evc-header-actions" });
+    const ghostLinks: Array<{ href: string; title: string; svg: string }> = [
+      {
+        href: "https://github.com/entire-vc/evc-local-sync-plugin?utm_source=obsidian-plugin&utm_medium=plugin-header&utm_campaign=localsync&utm_content=github",
+        title: "GitHub",
+        svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 4 5 4 5 4c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 11c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>',
       },
-      cls: "evc-settings-logo",
-    });
-
-    // Info container
-    const infoContainer = header.createDiv({ cls: "evc-settings-info" });
-
-    // Title
-    infoContainer.createDiv({ text: "Local sync to AI agent", cls: "evc-settings-title" });
-
-    // Description
-    infoContainer.createEl("p", {
-      text: "Bidirectional sync between Obsidian and AI development projects",
-      cls: "evc-settings-description",
-    });
-
-    // Issue form links
-    const linksContainer = infoContainer.createDiv({ cls: "evc-settings-links" });
-    const issueLinks: Array<{ text: string; url: string; icon: string }> = [
-      { text: "Bug report", url: "https://github.com/entire-vc/evc-local-sync-plugin/issues/new?template=bug-report.yml", icon: "bug" },
-      { text: "Feature request", url: "https://github.com/entire-vc/evc-local-sync-plugin/issues/new?template=feature-request.yml", icon: "lightbulb" },
-      { text: "Conflict case", url: "https://github.com/entire-vc/evc-local-sync-plugin/issues/new?template=conflict-case.yml", icon: "alert-triangle" },
+      {
+        href: "https://github.com/entire-vc/evc-local-sync-plugin/issues/new?template=bug-report.yml&utm_source=obsidian-plugin&utm_medium=plugin-header&utm_campaign=localsync&utm_content=bug",
+        title: "Bug report",
+        svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg>',
+      },
+      {
+        href: "https://github.com/entire-vc/evc-local-sync-plugin/issues/new?template=feature-request.yml&utm_source=obsidian-plugin&utm_medium=plugin-header&utm_campaign=localsync&utm_content=feature",
+        title: "Feature request",
+        svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>',
+      },
+      {
+        href: "https://github.com/entire-vc/evc-local-sync-plugin/issues/new?template=conflict-case.yml&utm_source=obsidian-plugin&utm_medium=plugin-header&utm_campaign=localsync&utm_content=conflict",
+        title: "Conflict case",
+        svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+      },
     ];
-    for (const link of issueLinks) {
-      const btn = linksContainer.createEl("a", {
-        cls: "evc-settings-issue-link",
-        href: link.url,
-      });
-      btn.setAttribute("target", "_blank");
-      const btnIcon = btn.createSpan({ cls: "evc-issue-link-icon" });
-      setIcon(btnIcon, link.icon);
-      btn.createSpan({ text: link.text });
+    for (const { href, title, svg } of ghostLinks) {
+      const a = actions.createEl("a", { cls: "evc-ghost-btn", href, attr: { target: "_blank", rel: "noopener", title } });
+      a.innerHTML = svg;
     }
 
-    // GitHub link - placed directly in header (right side, at logo level)
-    const githubLink = header.createEl("a", {
-      cls: "evc-settings-github-link",
-      href: "https://github.com/entire-vc/evc-local-sync-plugin",
+    // CTA row: Team Relay + Starter pack
+    const ctas = header.createDiv({ cls: "evc-header-ctas" });
+
+    const teamRelayBtn = ctas.createEl("a", {
+      cls: "evc-prim-btn",
+      href: "https://entire.vc/team-relay/?utm_source=obsidian-plugin&utm_medium=plugin-header&utm_campaign=localsync&utm_content=team-relay",
+      attr: { target: "_blank", rel: "noopener" },
     });
-    githubLink.setAttribute("target", "_blank");
+    teamRelayBtn.insertAdjacentHTML("afterbegin", '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>');
+    teamRelayBtn.createSpan({ text: "Team Relay" });
 
-    // Create GitHub icon using setIcon
-    const iconSpan = githubLink.createSpan({ cls: "evc-github-icon" });
-    setIcon(iconSpan, "github");
+    const starterBtn = ctas.createEl("a", {
+      cls: "evc-prim-btn",
+      href: "https://entire.vc/local-sync/?utm_source=obsidian-plugin&utm_medium=plugin-header&utm_campaign=localsync&utm_content=starterpack#starterpack",
+      attr: { target: "_blank", rel: "noopener" },
+    });
+    starterBtn.insertAdjacentHTML("afterbegin", '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>');
+    starterBtn.createSpan({ text: "Starter pack" });
 
-    githubLink.createSpan({ text: "GitHub" });
+    ctas.createSpan({ text: "Extended for teams →", cls: "evc-header-cta-hint" });
   }
 
   /**
