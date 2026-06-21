@@ -40,13 +40,10 @@
 }
 
 /* ============================================ */
-/* Settings Header Styles */
+/* Settings Header — Direction B (native toolbar) */
 /* ============================================ */
 
 .evc-settings-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
   background: var(--background-secondary);
@@ -54,120 +51,110 @@
   border: 1px solid var(--background-modifier-border);
 }
 
-.evc-settings-icon {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
+.evc-header-top {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: transparent !important;
-  background-color: transparent !important;
+  gap: 14px;
 }
 
-.evc-settings-icon svg {
-  width: 28px;
-  height: 28px;
+.evc-header-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  flex: none;
 }
 
-.evc-settings-info {
+.evc-header-text {
   flex: 1;
   min-width: 0;
 }
 
-.evc-settings-title {
-  margin: 0 0 0.25rem 0;
-  padding: 0;
-  border: none;
-  font-size: 1.25rem;
-  font-weight: 600;
+.evc-header-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-normal);
+  letter-spacing: -0.2px;
+  line-height: 1.2;
+}
+
+.evc-header-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.evc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.evc-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-s, 6px);
+  color: var(--text-faint);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.evc-ghost-btn:hover {
+  background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.evc-settings-logo {
-  border-radius: 8px;
+.evc-ghost-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
-.evc-github-icon {
+.evc-header-ctas {
   display: flex;
   align-items: center;
-  margin-right: 4px;
-}
-
-.evc-github-icon svg {
-  width: 14px;
-  height: 14px;
-}
-
-.evc-settings-description {
-  margin: 0 0 0.5rem 0;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  line-height: 1.4;
-}
-
-.evc-settings-links {
-  display: flex;
-  gap: 0.5rem;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
   flex-wrap: wrap;
 }
 
-.evc-settings-issue-link {
+.evc-prim-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.75rem;
-  background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 999px;
-  color: var(--text-muted);
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-s, 6px);
+  background: rgba(124, 92, 255, 0.1);
+  color: var(--interactive-accent);
+  border: 1px solid rgba(124, 92, 255, 0.2);
+  font-size: 13px;
+  font-weight: 600;
   text-decoration: none;
-  font-size: 0.85rem;
-  transition: all 0.15s ease;
+  white-space: nowrap;
+  transition: background 0.15s;
 }
 
-.evc-settings-issue-link:hover {
-  color: var(--text-normal);
-  border-color: var(--text-muted);
-  background: var(--background-secondary-alt);
+.evc-prim-btn:hover {
+  background: rgba(124, 92, 255, 0.18);
 }
 
-.evc-issue-link-icon {
-  display: flex;
-  align-items: center;
-}
-
-.evc-issue-link-icon svg {
-  width: 14px;
-  height: 14px;
-}
-
-.evc-settings-github-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.75rem;
-  background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.85rem;
-  transition: all 0.15s ease;
+.evc-prim-btn svg {
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
+  display: block;
+}
+
+.evc-header-cta-hint {
   margin-left: auto;
-  align-self: flex-start;
-}
-
-.evc-settings-github-link:hover {
-  color: var(--text-normal);
-  border-color: var(--text-muted);
-  background: var(--background-secondary-alt);
-}
-
-.evc-settings-github-link svg {
-  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-faint);
 }
 
 /* Mappings container */
