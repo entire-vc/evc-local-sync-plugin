@@ -34,12 +34,12 @@ import type { ConflictInfo, ResolutionDecision } from "./conflict-resolver";
  */
 export default class EVCLocalSyncPlugin extends Plugin {
   settings: EVCLocalSyncSettings = DEFAULT_SETTINGS;
-  mappingManager: MappingManager;
-  syncEngine: SyncEngine;
-  logger: SyncLogger;
-  fileWatcher: FileWatcher;
-  statusBar: StatusBarItem;
-  ribbonIcon: RibbonIcon;
+  mappingManager!: MappingManager;
+  syncEngine!: SyncEngine;
+  logger!: SyncLogger;
+  fileWatcher!: FileWatcher;
+  statusBar!: StatusBarItem;
+  ribbonIcon!: RibbonIcon;
   private scheduledSyncInterval: number | null = null;
 
   async onload(): Promise<void> {
@@ -57,8 +57,8 @@ export default class EVCLocalSyncPlugin extends Plugin {
     );
 
     // Get plugin data directory path
-    const pluginDir = (this.app.vault.adapter as {basePath?: string}).basePath
-      ? `${(this.app.vault.adapter as {basePath: string}).basePath}/${this.app.vault.configDir}/plugins/${this.manifest.id}`
+    const pluginDir = (this.app.vault.adapter as unknown as {basePath?: string}).basePath
+      ? `${(this.app.vault.adapter as unknown as {basePath: string}).basePath}/${this.app.vault.configDir}/plugins/${this.manifest.id}`
       : `${this.app.vault.configDir}/plugins/${this.manifest.id}`;
 
     this.syncEngine = new SyncEngine(this.app, this.settings, pluginDir);
