@@ -31,21 +31,21 @@ export class MappingModal extends Modal {
   private onSave: (mapping: Omit<ProjectMapping, "id">) => Promise<void>;
 
   // Form components
-  private nameInput: TextComponent;
-  private aiPathInput: TextComponent;
-  private obsidianPathInput: TextComponent;
-  private docsSubdirInput: TextComponent;
-  private syncEnabledToggle: ToggleComponent;
-  private bidirectionalToggle: ToggleComponent;
-  private syncDirectionDropdown: DropdownComponent;
-  private directionSetting: Setting;
+  private nameInput!: TextComponent;
+  private aiPathInput!: TextComponent;
+  private obsidianPathInput!: TextComponent;
+  private docsSubdirInput!: TextComponent;
+  private syncEnabledToggle!: ToggleComponent;
+  private bidirectionalToggle!: ToggleComponent;
+  private syncDirectionDropdown!: DropdownComponent;
+  private directionSetting!: Setting;
 
   // Advanced settings
-  private advancedContainer: HTMLElement;
+  private advancedContainer!: HTMLElement;
   private advancedExpanded = false;
 
   // Error display
-  private errorContainer: HTMLElement;
+  private errorContainer!: HTMLElement;
 
   constructor(app: App, options: MappingModalOptions) {
     super(app);
