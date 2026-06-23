@@ -16,7 +16,7 @@ jobs:
       run: |
         TAG=${GITHUB_REF#refs/tags/}
         MANIFEST_VERSION=$(jq -r .version manifest.json)
-        if [ "$TAG" == "$MANIFEST_VERSION" ] || [ "$TAG" == "v$MANIFEST_VERSION" ]; then
+        if [ "$TAG" == "$MANIFEST_VERSION" ]; then
           echo "should_release=true" >> $GITHUB_OUTPUT
         else
           echo "should_release=false" >> $GITHUB_OUTPUT
