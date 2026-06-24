@@ -1,6 +1,7 @@
 import { App, normalizePath, TFolder, TFile } from "obsidian";
 import type { ProjectMapping, EVCLocalSyncSettings } from "./settings";
 import { expandHome } from "./path-utils";
+import { getVaultBasePath } from "./obsidian-internal";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -168,9 +169,17 @@ export class MappingManager {
       errors.push("Mapping name is required");
     }
 
-    // Validate AI path
+    // Validate AI path (or intra-vault source path)
     if (!mapping.aiPath || mapping.aiPath.trim().length === 0) {
-      errors.push("AI project path is required");
+      errors.push(mapping.intraVault ? "Source vault path is required" : "AI project path is required");
+    } else if (mapping.intraVault) {
+      const absoluteSourcePath = path.join(getVaultBasePath(this.app), mapping.aiPath);
+      const sourceValid = this.validateExternalPath(absoluteSourcePath);
+      if (!sourceValid.exists) {
+        warnings.push(`Source vault path does not exist yet: ${mapping.aiPath}. It will need to be created before sync.`);
+      } else if (!sourceValid.isDirectory) {
+        errors.push(`Source vault path is not a directory: ${mapping.aiPath}`);
+      }
     } else {
       const aiPathValid = this.validateExternalPath(mapping.aiPath);
       if (!aiPathValid.exists) {
@@ -200,6 +209,15 @@ export class MappingManager {
     // Validate sync direction for non-bidirectional
     if (!mapping.bidirectional && !mapping.syncDirection) {
       errors.push("Sync direction is required for unidirectional sync");
+    }
+
+    // Intra-vault: source and target must not be the same path
+    if (mapping.intraVault && mapping.aiPath && mapping.obsidianPath) {
+      const normalizedSource = normalizePath(mapping.aiPath);
+      const normalizedTarget = normalizePath(mapping.obsidianPath);
+      if (normalizedSource === normalizedTarget) {
+        errors.push("Source and target paths must be different for intra-vault mapping");
+      }
     }
 
     // Check for duplicate mappings (same AI path)
@@ -267,10 +285,15 @@ export class MappingManager {
   }
 
   /**
-   * Get full docs path for AI project
+   * Get full docs path for AI project (or intra-vault source path)
    */
   getAiDocsPath(mapping: ProjectMapping): string {
-    const basePath = expandHome(mapping.aiPath);
+    let basePath: string;
+    if (mapping.intraVault) {
+      basePath = path.join(getVaultBasePath(this.app), mapping.aiPath);
+    } else {
+      basePath = expandHome(mapping.aiPath);
+    }
     if (mapping.docsSubdir && mapping.docsSubdir.trim().length > 0) {
       return path.join(basePath, mapping.docsSubdir);
     }
