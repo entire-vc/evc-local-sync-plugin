@@ -355,7 +355,6 @@ export class MappingModal extends Modal {
    * Update AI path setting name/description based on intra-vault mode
    */
   private updateAiPathSetting(): void {
-    if (!this.aiPathSetting) return;
     if (this.mapping.intraVault) {
       this.aiPathSetting.setName("Source vault path");
       this.aiPathSetting.setDesc(
