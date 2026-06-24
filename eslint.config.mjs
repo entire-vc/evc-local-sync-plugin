@@ -4,6 +4,11 @@ import obsidianmd from "eslint-plugin-obsidianmd";
 import globals from "globals";
 
 export default defineConfig([
+  {
+    // Typed obsidianmd rules require the tsconfig project; only src is in it.
+    // Ignore tests, build output and config files so `npx eslint .` runs clean.
+    ignores: ["__tests__/**", "main.js", "dist/**", "*.mjs", "*.js"],
+  },
   ...obsidianmd.configs.recommended,
   {
     files: ["src/**/*.ts"],
