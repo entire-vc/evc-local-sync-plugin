@@ -34,7 +34,7 @@ export class FileWatcher {
   private watchers: Map<string, chokidar.FSWatcher> = new Map();
   private isWatching = false;
   private pendingEvents: Map<string, FileChangeEvent> = new Map();
-  private debounceTimer: NodeJS.Timeout | null = null;
+  private debounceTimer: number | null = null;
 
   // Excluded patterns (same as sync-engine)
   // Note: configDir is added dynamically via shouldIgnore method
@@ -100,7 +100,7 @@ export class FileWatcher {
   async stop(): Promise<void> {
     // Clear debounce timer
     if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
+      window.clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
 
@@ -252,11 +252,11 @@ export class FileWatcher {
 
     // Reset debounce timer
     if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
+      window.clearTimeout(this.debounceTimer);
     }
 
     // Set new debounce timer
-    this.debounceTimer = setTimeout(() => {
+    this.debounceTimer = window.setTimeout(() => {
       this.flushPendingEvents();
     }, this.settings.debounceMs);
   }
