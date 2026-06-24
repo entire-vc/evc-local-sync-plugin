@@ -1194,10 +1194,15 @@ export class SyncEngine {
   }
 
   /**
-   * Get full docs path for AI project
+   * Get full docs path for AI project (or intra-vault source path)
    */
   private getAiDocsPath(mapping: ProjectMapping): string {
-    const basePath = expandHome(mapping.aiPath);
+    let basePath: string;
+    if (mapping.intraVault) {
+      basePath = path.join(getVaultBasePath(this.app), mapping.aiPath);
+    } else {
+      basePath = expandHome(mapping.aiPath);
+    }
     if (mapping.docsSubdir && mapping.docsSubdir.trim().length > 0) {
       return path.join(basePath, mapping.docsSubdir);
     }

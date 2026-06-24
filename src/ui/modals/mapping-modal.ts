@@ -39,6 +39,7 @@ export class MappingModal extends Modal {
   private bidirectionalToggle: ToggleComponent;
   private syncDirectionDropdown: DropdownComponent;
   private directionSetting: Setting;
+  private aiPathSetting!: Setting;
 
   // Advanced settings
   private advancedContainer: HTMLElement;
@@ -64,6 +65,7 @@ export class MappingModal extends Modal {
           syncEnabled: true,
           bidirectional: true,
           syncDirection: "ai-to-obs",
+          intraVault: false,
           conflictResolutionOverride: undefined,
           fileTypesOverride: undefined,
           excludePatternsOverride: undefined,
@@ -123,22 +125,43 @@ export class MappingModal extends Modal {
           });
       });
 
-    // AI Project Path
+    // Intra-vault mapping toggle
     new Setting(containerEl)
-      .setName("AI project path")
+      .setName("Intra-vault mapping")
       .setDesc(
-        "Full path to the AI project folder (e.g., ~/DevProjects/my-project)"
+        "Mirror a hidden vault folder (e.g. .claude) to a visible vault path so it rides Obsidian Sync. " +
+        "Both source and target are inside the vault. Leave off for the standard external-folder sync."
       )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.mapping.intraVault ?? false)
+          .onChange((value) => {
+            this.mapping.intraVault = value;
+            if (value) {
+              // Intra-vault: default to one-way (hidden → visible) for safety
+              this.mapping.bidirectional = false;
+              this.mapping.syncDirection = "ai-to-obs";
+              this.mapping.docsSubdir = "";
+              this.bidirectionalToggle?.setValue(false);
+              this.docsSubdirInput?.setValue("");
+            }
+            this.updateAiPathSetting();
+            this.updateDirectionVisibility();
+          });
+      });
+
+    // AI Project Path (or intra-vault source path)
+    this.aiPathSetting = new Setting(containerEl)
       .addText((text) => {
         this.aiPathInput = text;
         text
-          .setPlaceholder("~/projects/my-project")
           .setValue(this.mapping.aiPath)
           .onChange((value) => {
             this.mapping.aiPath = value;
           });
         text.inputEl.addClass("evc-input-wide");
       });
+    this.updateAiPathSetting();
 
     // Obsidian Folder Path
     new Setting(containerEl)
@@ -329,6 +352,27 @@ export class MappingModal extends Modal {
   }
 
   /**
+   * Update AI path setting name/description based on intra-vault mode
+   */
+  private updateAiPathSetting(): void {
+    if (!this.aiPathSetting) return;
+    if (this.mapping.intraVault) {
+      this.aiPathSetting.setName("Source vault path");
+      this.aiPathSetting.setDesc(
+        "Vault-relative path to the hidden source folder (e.g. .claude). " +
+        "This folder is NOT synced by Obsidian Sync — its contents will be mirrored to the target path."
+      );
+      this.aiPathInput?.setPlaceholder(".claude");
+    } else {
+      this.aiPathSetting.setName("AI project path");
+      this.aiPathSetting.setDesc(
+        "Full path to the AI project folder (e.g., ~/DevProjects/my-project)"
+      );
+      this.aiPathInput?.setPlaceholder("~/projects/my-project");
+    }
+  }
+
+  /**
    * Update visibility of sync direction based on bidirectional toggle
    */
   private updateDirectionVisibility(): void {
@@ -382,7 +426,7 @@ export class MappingModal extends Modal {
     }
 
     if (!this.mapping.aiPath.trim()) {
-      errors.push("AI project path is required");
+      errors.push(this.mapping.intraVault ? "Source vault path is required" : "AI project path is required");
     }
 
     if (!this.mapping.obsidianPath.trim()) {
