@@ -32,6 +32,8 @@ export class LogViewerModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("evc-sync-modal", "evc-log-viewer-modal");
+    // Add class to modal container so CSS can target it without :has()
+    this.modalEl.addClass("evc-log-modal");
 
     // Title
     contentEl.createEl("h2", { text: "Sync logs" });

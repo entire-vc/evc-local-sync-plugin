@@ -86,7 +86,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
     // Start file watcher if syncMode is "on-change"
     if (this.settings.syncMode === "on-change") {
       // Delay to allow Obsidian to fully load
-      setTimeout(() => {
+      window.setTimeout(() => {
         this.fileWatcher.start();
       }, 3000);
     }
@@ -107,7 +107,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
     // Sync on startup if enabled
     if (this.settings.syncOnStartup && this.settings.syncMode !== "manual") {
       // Delay to allow Obsidian to fully load
-      setTimeout(() => {
+      window.setTimeout(() => {
         void this.syncAllProjects();
       }, 2000);
     }
@@ -136,7 +136,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
 
     const intervalMs = this.settings.scheduledIntervalMinutes * 60 * 1000;
 
-    this.scheduledSyncInterval = activeWindow.setInterval(() => {
+    this.scheduledSyncInterval = window.setInterval(() => {
       console.debug("EVC Sync: Running scheduled sync...");
       void this.syncAllProjects();
     }, intervalMs);
@@ -149,7 +149,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
    */
   private stopScheduledSync(): void {
     if (this.scheduledSyncInterval) {
-      activeWindow.clearInterval(this.scheduledSyncInterval);
+      window.clearInterval(this.scheduledSyncInterval);
       this.scheduledSyncInterval = null;
       console.debug("EVC Sync: Scheduled sync stopped");
     }

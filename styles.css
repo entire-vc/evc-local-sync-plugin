@@ -1,8 +1,8 @@
 /* EVC Local Sync to AI Agent - Plugin Styles */
 
 /* Utility classes */
-.evc-hidden {
-  display: none !important;
+.evc-hidden.evc-hidden {
+  display: none;
 }
 
 .evc-input-wide {
@@ -98,7 +98,7 @@
   height: 30px;
   border-radius: var(--radius-s, 6px);
   color: var(--text-faint);
-  text-decoration: none;
+  text-decoration-line: none;
   transition: background 0.15s, color 0.15s;
 }
 
@@ -135,7 +135,7 @@
   border: 1px solid rgba(124, 92, 255, 0.2);
   font-size: 13px;
   font-weight: 600;
-  text-decoration: none;
+  text-decoration-line: none;
   white-space: nowrap;
   transition: background 0.15s;
 }
@@ -594,12 +594,12 @@
 }
 
 /* Override Obsidian modal container width for log viewer */
-.modal:has(.evc-log-viewer-modal) {
-  width: 90vw !important;
-  max-width: 1200px !important;
+.modal.evc-log-modal {
+  width: 90vw;
+  max-width: 1200px;
 }
 
-.modal:has(.evc-log-viewer-modal) .modal-content {
+.modal.evc-log-modal .modal-content {
   width: 100%;
 }
 
@@ -688,8 +688,8 @@
   background: var(--background-modifier-error);
 }
 
-.evc-log-row-error:hover {
-  background: var(--background-modifier-error) !important;
+.evc-log-table .evc-log-row-error:hover {
+  background: var(--background-modifier-error);
 }
 
 .evc-log-cell-timestamp {
@@ -768,7 +768,7 @@
   color: var(--text-error);
   font-weight: 500;
   cursor: pointer;
-  text-decoration: underline;
+  text-decoration-line: underline;
   text-decoration-style: dotted;
 }
 
