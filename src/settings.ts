@@ -47,6 +47,14 @@ export interface ProjectMapping {
   fileTypesOverride?: string[];
   /** Override global exclude patterns (undefined = use global) */
   excludePatternsOverride?: string[];
+
+  /**
+   * Intra-vault mapping: both source and target are inside the vault.
+   * When true, aiPath is treated as a vault-relative path (e.g. ".claude")
+   * instead of an external filesystem path. Useful for mirroring hidden
+   * vault folders (skipped by Obsidian Sync) to visible vault paths.
+   */
+  intraVault?: boolean;
 }
 
 /**

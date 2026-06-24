@@ -138,10 +138,16 @@ export class FileWatcher {
   }
 
   /**
-   * Get full docs path for AI project (same logic as sync-engine)
+   * Get full docs path for AI project (same logic as sync-engine).
+   * For intra-vault mappings, aiPath is vault-relative so prepend vaultBasePath.
    */
   private getAiDocsPath(mapping: ProjectMapping): string {
-    const basePath = expandHome(mapping.aiPath);
+    let basePath: string;
+    if (mapping.intraVault) {
+      basePath = path.join(getVaultBasePath(this.app), mapping.aiPath);
+    } else {
+      basePath = expandHome(mapping.aiPath);
+    }
     if (mapping.docsSubdir && mapping.docsSubdir.trim().length > 0) {
       return path.join(basePath, mapping.docsSubdir);
     }
