@@ -27,6 +27,10 @@ jobs:
           node-version: '20'
       - run: npm ci || npm install
       - run: npm run build
+      - name: Restore committed manifest.json (a dev/debug build must NEVER change the published version)
+        # Some plugins' build copies manifest-beta.json -> manifest.json in debug mode (esbuild
+        # debug overwrite, version=beta). The published version MUST be the tag's committed manifest.
+        run: git checkout HEAD -- manifest.json
       - name: Resolve + verify version (bare, tag == manifest)
         id: v
         run: |
