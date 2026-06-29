@@ -235,11 +235,98 @@ export class MappingManager {
       );
     }
 
+    // Cross-mapping containment check (#14): warn (do NOT block) on nested/overlapping
+    // mapping roots. Nested mappings are now SAFE — the sync engine and file-watcher
+    // exclude another mapping's subtree from each scan — so this is informational, not
+    // a hard error (users legitimately map a folder and a sub-folder separately).
+    if (mapping.obsidianPath || mapping.aiPath) {
+      const candidateObs = this.resolveMappingObsPath(mapping);
+      const candidateAi = this.resolveMappingAiPath(mapping);
+
+      for (const other of this.settings.mappings) {
+        if (!other.syncEnabled || other.id === idToExclude) {
+          continue;
+        }
+
+        const otherObs = this.resolveMappingObsPath(other);
+        const otherAi = this.resolveMappingAiPath(other);
+
+        if (
+          candidateObs &&
+          otherObs &&
+          this.pathsOverlap(candidateObs, otherObs)
+        ) {
+          warnings.push(
+            `Obsidian folder overlaps with mapping "${other.name}". Nested folders ` +
+              `are auto-separated so each mapping only syncs its own subtree — ` +
+              `make sure this is what you intend.`
+          );
+        }
+
+        if (candidateAi && otherAi && this.pathsOverlap(candidateAi, otherAi)) {
+          warnings.push(
+            `AI project path overlaps with mapping "${other.name}". Nested paths ` +
+              `are auto-separated so each mapping only syncs its own subtree — ` +
+              `make sure this is what you intend.`
+          );
+        }
+      }
+    }
+
     return {
       valid: errors.length === 0,
       errors,
       warnings,
     };
+  }
+
+  /**
+   * Resolve a mapping's effective Obsidian docs path (mirrors SyncEngine.getObsidianDocsPath).
+   */
+  private resolveMappingObsPath(
+    mapping: Pick<ProjectMapping, "obsidianPath" | "docsSubdir">
+  ): string {
+    if (!mapping.obsidianPath) {
+      return "";
+    }
+    if (mapping.docsSubdir && mapping.docsSubdir.trim().length > 0) {
+      return normalizePath(path.join(mapping.obsidianPath, mapping.docsSubdir));
+    }
+    return normalizePath(mapping.obsidianPath);
+  }
+
+  /**
+   * Resolve a mapping's effective AI docs path (mirrors SyncEngine.getAiDocsPath).
+   */
+  private resolveMappingAiPath(
+    mapping: Pick<ProjectMapping, "aiPath" | "docsSubdir" | "intraVault">
+  ): string {
+    if (!mapping.aiPath) {
+      return "";
+    }
+    let basePath: string;
+    if (mapping.intraVault) {
+      basePath = path.join(getVaultBasePath(this.app), mapping.aiPath);
+    } else {
+      basePath = expandHome(mapping.aiPath);
+    }
+    if (mapping.docsSubdir && mapping.docsSubdir.trim().length > 0) {
+      basePath = path.join(basePath, mapping.docsSubdir);
+    }
+    return normalizePath(basePath);
+  }
+
+  /**
+   * Returns true if two resolved paths are equal, or one contains the other
+   * (segment-aware so "a/docs" does not match "a/docs-extra").
+   */
+  private pathsOverlap(a: string, b: string): boolean {
+    const x = a.replace(/\/$/, "");
+    const y = b.replace(/\/$/, "");
+    if (!x || !y) {
+      return false;
+    }
+    return x === y || x.startsWith(y + "/") || y.startsWith(x + "/");
   }
 
   /**

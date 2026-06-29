@@ -179,6 +179,121 @@ describe("Integration: SyncEngine AI→Obs file copy flow", () => {
 	});
 });
 
+describe("Integration: overlapping bidirectional mappings must not nest docs/docs", () => {
+	let aiDirA: string;
+	let aiDirB: string;
+	let vaultDir: string;
+	let engine: SyncEngine;
+	let vault: ReturnType<typeof makeVaultMock>;
+
+	// Count every file under a directory tree (recursive).
+	function countFiles(dir: string): number {
+		let count = 0;
+		const walk = (d: string): void => {
+			for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+				const p = path.join(d, entry.name);
+				if (entry.isDirectory()) {
+					walk(p);
+				} else {
+					count++;
+				}
+			}
+		};
+		if (fs.existsSync(dir)) {
+			walk(dir);
+		}
+		return count;
+	}
+
+	// Collect every path (relative to root) that exists under a tree.
+	function allPaths(dir: string): string[] {
+		const out: string[] = [];
+		const walk = (d: string, rel: string): void => {
+			for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+				const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+				const p = path.join(d, entry.name);
+				out.push(childRel);
+				if (entry.isDirectory()) {
+					walk(p, childRel);
+				}
+			}
+		};
+		if (fs.existsSync(dir)) {
+			walk(dir, "");
+		}
+		return out;
+	}
+
+	beforeEach(async () => {
+		// Two AI roots that both end in "/docs" (the segment that runs away).
+		aiDirA = path.join(makeTempDir(), "docs");
+		aiDirB = path.join(makeTempDir(), "docs");
+		fs.mkdirSync(aiDirA, { recursive: true });
+		fs.mkdirSync(aiDirB, { recursive: true });
+		vaultDir = makeTempDir();
+		vault = makeVaultMock(vaultDir);
+
+		const app = { vault, _vaultBasePath: vaultDir } as unknown as import("obsidian").App;
+
+		// Mapping A: aiDirA <-> vault "Proj"
+		// Mapping B: aiDirB <-> vault "Proj/Sub"  (nested UNDER A's vault root)
+		const mappingA = makeMapping(aiDirA, "Proj", {
+			id: "map-A",
+			name: "Proj",
+			bidirectional: true,
+			syncDirection: undefined,
+			docsSubdir: "",
+		});
+		const mappingB = makeMapping(aiDirB, "Proj/Sub", {
+			id: "map-B",
+			name: "Proj-Sub",
+			bidirectional: true,
+			syncDirection: undefined,
+			docsSubdir: "",
+		});
+
+		const settings = makeSettings({ mappings: [mappingA, mappingB] });
+		engine = new SyncEngine(app, settings, "/tmp/evc-ls-plugin");
+		await engine.init();
+	});
+
+	afterEach(() => {
+		rmDir(path.dirname(aiDirA));
+		rmDir(path.dirname(aiDirB));
+		rmDir(vaultDir);
+	});
+
+	test("running syncAll repeatedly never creates docs/docs nesting and stays bounded", async () => {
+		// Seed one .md in each AI root and in the nested vault target.
+		writeFile(aiDirA, "a.md", "# A");
+		writeFile(aiDirB, "b.md", "# B");
+		writeFile(vaultDir, "Proj/Sub/seed.md", "# Seed");
+
+		for (let i = 0; i < 5; i++) {
+			await engine.syncAll();
+		}
+
+		// No path anywhere under the vault may contain the "docs/docs" signature,
+		// nor may a "Proj/docs" folder appear (would mean A swallowed its own/B's tree).
+		const vaultPaths = allPaths(vaultDir);
+		for (const p of vaultPaths) {
+			expect(p.includes("docs/docs")).toBe(false);
+		}
+		expect(fs.existsSync(path.join(vaultDir, "Proj", "docs"))).toBe(false);
+
+		// AI roots must not have grown a nested "docs/docs" either.
+		for (const p of [...allPaths(aiDirA), ...allPaths(aiDirB)]) {
+			expect(p.includes("docs/docs")).toBe(false);
+		}
+
+		// File counts must stay bounded (not grow per iteration / runaway).
+		// Generous upper bounds — the bug produced unbounded growth across 5 cycles.
+		expect(countFiles(aiDirA)).toBeLessThanOrEqual(10);
+		expect(countFiles(aiDirB)).toBeLessThanOrEqual(10);
+		expect(countFiles(vaultDir)).toBeLessThanOrEqual(20);
+	});
+});
+
 describe("Integration: path-utils expandHome", () => {
 	test("expands ~ to HOME directory", () => {
 		// Import after mock setup

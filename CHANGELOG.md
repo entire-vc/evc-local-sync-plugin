@@ -5,6 +5,11 @@ All notable changes to EVC Local Sync plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-06-30
+
+### Fixed
+- **Critical: recursive `docs/docs/docs/…` folder nesting** from overlapping bidirectional mappings (regression from intra-vault mapping in 1.3.0, GH #14). A mapping whose target was nested inside another mapping's target would swallow the other's subtree and grow one `docs/` level per sync cycle — flooding the sync log and hanging Obsidian on every edit. Fixed three ways: the recursive scan now excludes other mappings' subtrees; the write step refuses any path that would nest a folder inside itself (`…/docs/docs/…`); and the file-watcher no longer re-enqueues another mapping's synced output. Nested/overlapping mappings are now safe (each syncs only its own subtree) and merely warn instead of blocking.
+
 ## [1.3.2] - 2026-06-24
 
 ### Fixed

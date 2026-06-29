@@ -188,7 +188,7 @@ export class FileWatcher {
 
       const watcher = chokidar.watch(filePatterns, {
         cwd: dirPath,
-        ignored: (filePath: string) => this.shouldIgnore(filePath),
+        ignored: (filePath: string) => this.shouldIgnore(filePath, dirPath, mapping),
         persistent: true,
         ignoreInitial: true,
         awaitWriteFinish: {
@@ -289,9 +289,16 @@ export class FileWatcher {
   }
 
   /**
-   * Check if a path should be ignored
+   * Check if a path should be ignored.
+   * @param filePath - path relative to the watched directory (chokidar cwd)
+   * @param watchRoot - absolute path of the watched directory (optional)
+   * @param mapping - the mapping this watcher belongs to (optional)
    */
-  private shouldIgnore(filePath: string): boolean {
+  private shouldIgnore(
+    filePath: string,
+    watchRoot?: string,
+    mapping?: ProjectMapping
+  ): boolean {
     const parts = filePath.split(path.sep);
     const configDir = this.app.vault.configDir;
 
@@ -313,7 +320,67 @@ export class FileWatcher {
       }
     }
 
+    // Anti-recursion guard (#14): ignore any immediately-repeated path segment
+    // (e.g. ".../docs/docs/...") — the signature of runaway nested-mapping output.
+    if (this.hasRepeatedSegment(filePath)) {
+      return true;
+    }
+
+    // Anti-recursion guard (#14): ignore paths that fall inside ANOTHER enabled
+    // mapping's subtree, so synced output is never re-enqueued back through us.
+    if (watchRoot && mapping) {
+      const absPath = path.isAbsolute(filePath)
+        ? filePath
+        : path.join(watchRoot, filePath);
+      for (const root of this.getSiblingRoots(mapping)) {
+        if (this.isPathInside(absPath, root)) {
+          return true;
+        }
+      }
+    }
+
     return false;
+  }
+
+  /**
+   * Absolute AI + Obsidian docs roots of all OTHER enabled mappings.
+   */
+  private getSiblingRoots(mapping: ProjectMapping): string[] {
+    const vaultBasePath = getVaultBasePath(this.app);
+    const roots: string[] = [];
+    for (const other of this.settings.mappings) {
+      if (!other.syncEnabled || other.id === mapping.id) {
+        continue;
+      }
+      roots.push(this.getAiDocsPath(other));
+      roots.push(path.join(vaultBasePath, this.getObsidianDocsPath(other)));
+    }
+    return roots;
+  }
+
+  /**
+   * Detect an immediately-repeated path segment (e.g. ".../docs/docs/...").
+   */
+  private hasRepeatedSegment(p: string): boolean {
+    const segs = p.replace(/\\/g, "/").split("/").filter((s) => s.length > 0);
+    for (let i = 1; i < segs.length; i++) {
+      if (segs[i] === segs[i - 1]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Returns true if `child` is the same path as, or nested under, `parent`
+   * (segment-aware).
+   */
+  private isPathInside(child: string, parent: string): boolean {
+    const norm = (p: string): string =>
+      p.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/\/$/, "");
+    const c = norm(child);
+    const par = norm(parent);
+    return c === par || c.startsWith(par + "/");
   }
 
   /**

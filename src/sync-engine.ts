@@ -742,6 +742,8 @@ export class SyncEngine {
     const followSymlinks = this.settings.followSymlinks;
     const fileTypes = getEffectiveFileTypes(mapping, this.settings);
     const excludePatterns = getEffectiveExcludePatterns(mapping, this.settings);
+    // Anti-recursion guard: never descend into another mapping's AI subtree (#14)
+    const otherRoots = this.getOtherMappingAiRoots(mapping);
 
     const walkDir = (currentPath: string, basePath: string): void => {
       try {
@@ -775,6 +777,12 @@ export class SyncEngine {
           }
 
           if (isDir) {
+            // Anti-recursion (#14): never descend into another mapping's AI
+            // subtree — overlapping bidirectional mappings would otherwise
+            // swallow each other's output and grow docs/docs/docs nesting.
+            if (otherRoots.some((root) => this.isPathInside(entryPath, root))) {
+              continue;
+            }
             walkDir(entryPath, basePath);
           } else if (isFile) {
             if (this.shouldIncludeFileForMapping(entry.name, fileTypes)) {
@@ -857,6 +865,8 @@ export class SyncEngine {
     const normalizedPath = normalizePath(obsDocsPath);
     const fileTypes = getEffectiveFileTypes(mapping, this.settings);
     const excludePatterns = getEffectiveExcludePatterns(mapping, this.settings);
+    // Anti-recursion guard: never descend into another mapping's vault subtree (#14)
+    const otherRoots = this.getOtherMappingObsRoots(mapping);
 
     const folder = this.app.vault.getAbstractFileByPath(normalizedPath);
 
@@ -872,6 +882,11 @@ export class SyncEngine {
         }
 
         if (child instanceof TFolder) {
+          // Anti-recursion (#14): skip another mapping's vault subtree so
+          // overlapping bidirectional mappings can't swallow each other.
+          if (otherRoots.some((root) => this.isPathInside(child.path, root))) {
+            continue;
+          }
           await walkFolder(child, basePath);
         } else if (child instanceof TFile) {
           if (this.shouldIncludeFileForMapping(child.name, fileTypes)) {
@@ -1020,6 +1035,24 @@ export class SyncEngine {
   ): Promise<void> {
     // Resolve vault path with correct folder casing (e.g. "gtm/" → "GTM/" on macOS)
     const rawTargetPath = normalizePath(path.join(obsDocsPath, relativePath));
+
+    // Self-nesting guard (#14): refuse to write a destination that would nest the
+    // root's folder name inside itself (e.g. "docs/docs/...") — caps runaway growth
+    // even if the recursive-scan boundary checks miss an edge.
+    const rootBasename = path.basename(normalizePath(obsDocsPath));
+    const relFirstSegment = this.normalizeRelativePath(relativePath).split("/")[0];
+    // Only inspect the segment we control (root basename + relative path), so a
+    // user root path that legitimately repeats a segment can't deadlock the mapping.
+    if (
+      this.hasRepeatedSegment(`${rootBasename}/${relativePath}`) ||
+      (rootBasename.length > 0 && relFirstSegment === rootBasename)
+    ) {
+      console.warn(
+        `EVC Sync: skipped write to avoid recursive nesting: ${rawTargetPath}`
+      );
+      return;
+    }
+
     const targetPath = this.resolveVaultPath(rawTargetPath);
 
     // Ensure parent directory exists
@@ -1064,6 +1097,23 @@ export class SyncEngine {
     relativePath: string
   ): Promise<void> {
     const targetPath = path.join(aiDocsPath, relativePath);
+
+    // Self-nesting guard (#14): refuse to write a destination that would nest the
+    // root's folder name inside itself (e.g. "docs/docs/...") — caps runaway growth
+    // even if the recursive-scan boundary checks miss an edge.
+    const rootBasename = path.basename(aiDocsPath.replace(/[/\\]+$/, ""));
+    const relFirstSegment = this.normalizeRelativePath(relativePath).split("/")[0];
+    // Only inspect the segment we control (root basename + relative path), so a
+    // user root path that legitimately repeats a segment can't deadlock the mapping.
+    if (
+      this.hasRepeatedSegment(`${rootBasename}/${relativePath}`) ||
+      (rootBasename.length > 0 && relFirstSegment === rootBasename)
+    ) {
+      console.warn(
+        `EVC Sync: skipped write to avoid recursive nesting: ${targetPath}`
+      );
+      return;
+    }
 
     // Ensure parent directory exists
     const parentDir = path.dirname(targetPath);
@@ -1217,6 +1267,58 @@ export class SyncEngine {
       return normalizePath(path.join(mapping.obsidianPath, mapping.docsSubdir));
     }
     return normalizePath(mapping.obsidianPath);
+  }
+
+  /**
+   * Returns true if `child` is the same path as, or nested under, `parent`.
+   * Comparison is segment-based (so "/a/docs" does NOT match "/a/docs-extra")
+   * and case-insensitive on macOS/Windows to match the rest of the engine.
+   */
+  private isPathInside(child: string, parent: string): boolean {
+    const norm = (p: string): string => {
+      const cleaned = p.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/\/$/, "");
+      return process.platform === "darwin" || process.platform === "win32"
+        ? cleaned.toLowerCase()
+        : cleaned;
+    };
+    const c = norm(child);
+    const par = norm(parent);
+    return c === par || c.startsWith(par + "/");
+  }
+
+  /**
+   * Resolved AI docs roots of all OTHER enabled mappings (anti-recursion guard).
+   * Used to stop a mapping's recursive scan from descending into another
+   * mapping's output subtree, which would otherwise create runaway
+   * docs/docs/docs nesting on bidirectional overlapping mappings.
+   */
+  private getOtherMappingAiRoots(mapping: ProjectMapping): string[] {
+    return this.settings.mappings
+      .filter((m) => m.syncEnabled && m.id !== mapping.id)
+      .map((m) => this.getAiDocsPath(m));
+  }
+
+  /**
+   * Resolved Obsidian docs roots (vault-relative) of all OTHER enabled mappings.
+   */
+  private getOtherMappingObsRoots(mapping: ProjectMapping): string[] {
+    return this.settings.mappings
+      .filter((m) => m.syncEnabled && m.id !== mapping.id)
+      .map((m) => this.getObsidianDocsPath(m));
+  }
+
+  /**
+   * Detect an immediately-repeated path segment (e.g. ".../docs/docs/...").
+   * Defends against runaway self-nesting even if mapping-boundary checks miss.
+   */
+  private hasRepeatedSegment(p: string): boolean {
+    const parts = p.replace(/\\/g, "/").split("/").filter((s) => s.length > 0);
+    for (let i = 1; i < parts.length; i++) {
+      if (parts[i] === parts[i - 1]) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
