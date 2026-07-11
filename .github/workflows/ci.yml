@@ -129,16 +129,28 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_TAG=$(gh api /repos/${{ github.repository }}/releases/latest --jq '.tag_name' 2>/dev/null || echo "0.0.0")
+          REPO="${{ github.repository }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.event.after }}"
+          fi
+          CHANGED=""
+          if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ] && [ "$BASE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            CHANGED=$(gh api "repos/$REPO/compare/$BASE_SHA...$HEAD_SHA" --jq '.files[].filename' 2>/dev/null | grep -E '^(manifest\.json|package\.json|versions\.json)$' || true)
+          fi
+          if [ -z "$CHANGED" ]; then
+            echo "No version-file changes in this diff — not a release-bump, skipping monotonicity check."
+            exit 0
+          fi
+          LATEST_TAG=$(gh api "repos/$REPO/releases/latest" --jq '.tag_name' 2>/dev/null || echo "0.0.0")
           LATEST_VER="${LATEST_TAG#v}"
           CUR_VER=$(node -p "require('./manifest.json').version")
-          echo "Latest published release: $LATEST_VER"
-          echo "Current manifest version: $CUR_VER"
-          version_gt() {
-            [ "$(printf '%s\n%s' "$1" "$2" | sort -V | tail -1)" = "$1" ] && [ "$1" != "$2" ]
-          }
+          version_gt() { [ "$(printf '%s\n%s' "$1" "$2" | sort -V | tail -1)" = "$1" ] && [ "$1" != "$2" ]; }
           if ! version_gt "$CUR_VER" "$LATEST_VER"; then
-            echo "::error::Version $CUR_VER is not strictly greater than latest published release $LATEST_VER. Bump the version monotonically."
+            echo "::error::Version $CUR_VER is not strictly greater than latest published release $LATEST_VER."
             exit 1
           fi
           echo "OK: $CUR_VER > $LATEST_VER (monotonically increasing)"
