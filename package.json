@@ -51,6 +51,7 @@
     "chokidar": "^3.6.0"
   },
   "overrides": {
+    "brace-expansion": "^5.0.7",
     "@eslint/config-array": {
       "minimatch": ">=3.1.3"
     },
