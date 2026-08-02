@@ -316,6 +316,16 @@ export class FileWatcher {
       }
     }
 
+    // File-type filter (previously done via chokidar glob targets, removed
+    // in chokidar 4+). Only applied once we KNOW it's a file (stats.isFile()) —
+    // never on directories, or chokidar won't be able to recurse into them.
+    if (stats?.isFile()) {
+      const ext = path.extname(filePath);
+      if (!this.settings.fileTypes.includes(ext)) {
+        return true;
+      }
+    }
+
     // Check user-defined exclusions
     for (const pattern of this.settings.excludePatterns) {
       if (filePath.includes(pattern)) {
