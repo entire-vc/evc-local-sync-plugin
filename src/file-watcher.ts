@@ -1,5 +1,6 @@
 import * as chokidar from "chokidar";
 import * as path from "path";
+import type { Stats } from "fs";
 import type { App } from "obsidian";
 import type { EVCLocalSyncSettings, ProjectMapping } from "./settings";
 import { getVaultBasePath } from "./obsidian-internal";
@@ -179,16 +180,17 @@ export class FileWatcher {
       return;
     }
 
-    // Build glob patterns for file types
-    const filePatterns = this.settings.fileTypes.map((ext) => `**/*${ext}`);
-
     try {
       // Use polling for Obsidian vault (Obsidian uses atomic writes)
       const usePolling = source === "obsidian";
 
-      const watcher = chokidar.watch(filePatterns, {
+      // chokidar 4+ dropped glob-pattern watch targets (glob support was
+      // removed from the library); watch the directory itself and filter
+      // by extension in `ignored` instead.
+      const watcher = chokidar.watch(dirPath, {
         cwd: dirPath,
-        ignored: (filePath: string) => this.shouldIgnore(filePath, dirPath, mapping),
+        ignored: (filePath: string, stats?: Stats) =>
+          this.shouldIgnore(filePath, dirPath, mapping, stats),
         persistent: true,
         ignoreInitial: true,
         awaitWriteFinish: {
@@ -297,7 +299,8 @@ export class FileWatcher {
   private shouldIgnore(
     filePath: string,
     watchRoot?: string,
-    mapping?: ProjectMapping
+    mapping?: ProjectMapping,
+    stats?: Stats
   ): boolean {
     const parts = filePath.split(path.sep);
     const configDir = this.app.vault.configDir;
@@ -309,6 +312,16 @@ export class FileWatcher {
       }
       // Check config directory dynamically
       if (part === configDir) {
+        return true;
+      }
+    }
+
+    // File-type filter (previously done via chokidar glob targets, removed
+    // in chokidar 4+). Only applied once we KNOW it's a file (stats.isFile()) —
+    // never on directories, or chokidar won't be able to recurse into them.
+    if (stats?.isFile()) {
+      const ext = path.extname(filePath);
+      if (!this.settings.fileTypes.includes(ext)) {
         return true;
       }
     }

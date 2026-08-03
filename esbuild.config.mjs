@@ -31,6 +31,10 @@ const context = await esbuild.context({
     "@lezer/highlight",
     "@lezer/lr",
     ...builtinModules,
+    // Node built-ins imported via the "node:" protocol (e.g. chokidar 4+)
+    // aren't matched by the bare names above — esbuild's `external` does
+    // exact string matching, not prefix stripping.
+    ...builtinModules.map((m) => `node:${m}`),
     "fsevents",
   ],
   format: "cjs",
