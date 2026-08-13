@@ -483,3 +483,4 @@ export default class EVCLocalSyncPlugin extends Plugin {
     }
   }
 }
+const x: number = 'this is a deliberate type error';
