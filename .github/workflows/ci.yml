@@ -1,9 +1,10 @@
 # CI — EVC Local Sync Obsidian Plugin
 # Based on F3 ci-ts-plugin template (bob/docs/ci-templates/ci-ts-plugin.yml)
 #
-# Burn-in mode: all jobs use continue-on-error: true (non-blocking REPORT).
-# To flip to ENFORCE: set continue-on-error: false on each job and set
-# CI_MODE=ENFORCE in repo Settings → Variables → Actions.
+# ENFORCE mode is live: all jobs use continue-on-error: false (blocking).
+# CI_MODE=ENFORCE is set in repo Settings → Variables → Actions.
+# To revert to burn-in: set continue-on-error: true on each job and set
+# CI_MODE=REPORT (or unset it).
 
 name: CI
 
@@ -22,7 +23,7 @@ jobs:
   type-check:
     name: "TypeScript type-check"
     runs-on: ubuntu-latest
-    continue-on-error: true
+    continue-on-error: false
 
     steps:
       - uses: actions/checkout@v7
@@ -38,7 +39,7 @@ jobs:
   unit-coverage:
     name: "Jest (unit + integration) + coverage report"
     runs-on: ubuntu-latest
-    continue-on-error: true
+    continue-on-error: false
 
     steps:
       - uses: actions/checkout@v7
@@ -65,7 +66,7 @@ jobs:
   build-smoke:
     name: "Build + smoke"
     runs-on: ubuntu-latest
-    continue-on-error: true
+    continue-on-error: false
 
     steps:
       - uses: actions/checkout@v7
@@ -88,7 +89,7 @@ jobs:
   lint:
     name: "ESLint"
     runs-on: ubuntu-latest
-    continue-on-error: true
+    continue-on-error: false
 
     steps:
       - uses: actions/checkout@v7
