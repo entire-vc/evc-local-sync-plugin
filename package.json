@@ -32,20 +32,20 @@
     "@eslint/js": "^10.0.1",
     "@eslint/json": "^0.14.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.1.2",
-    "@typescript-eslint/eslint-plugin": "^8.65.0",
-    "@typescript-eslint/parser": "^8.65.0",
-    "@typescript-eslint/utils": "^8.65.0",
-    "esbuild": "^0.28.1",
-    "eslint": "^10.8.0",
+    "@types/node": "^26.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.66.0",
+    "@typescript-eslint/parser": "^8.66.0",
+    "@typescript-eslint/utils": "^8.66.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.8.1",
     "eslint-plugin-obsidianmd": "^0.4.1",
-    "globals": "^17.8.0",
+    "globals": "^17.9.0",
     "jest": "^30.4.2",
     "obsidian": "^1.13.1",
     "ts-jest": "^29.4.12",
     "tslib": "^2.6.2",
     "typescript": "^5.3.3",
-    "typescript-eslint": "^8.65.0"
+    "typescript-eslint": "^8.66.0"
   },
   "dependencies": {
     "chokidar": "^5.0.0"
