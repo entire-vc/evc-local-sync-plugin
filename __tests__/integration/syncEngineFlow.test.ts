@@ -407,12 +407,19 @@ describe("Integration: shared-docsSubdir shadow duplicate (#3bb939c5 — #58/1.3
 		rmDir(vaultDir);
 	});
 
-	test("does not recreate docs/dev-docs when the same file already exists one level up (ai-to-obs)", async () => {
+	test("does not recreate docs/dev-docs when the same files already exist one level up (ai-to-obs)", async () => {
 		// Repo's real content root is repoRoot/dev-docs (docsSubdir="dev-docs").
+		// Multiple files, matching the live incident: the ENTIRE tree resurrected
+		// at once (specs/guides/adrs/issues/… — not a single file), which is
+		// exactly the "majority of the tree matches" signal the detector requires.
 		writeFile(repoRoot, "dev-docs/issues/a.md", "# A, 846-ish bytes of content");
-		// Vault already has the CANONICAL copy directly under Product/docs — this
-		// is the already-synced state Bill measured before Obsidian restarted.
+		writeFile(repoRoot, "dev-docs/specs/b.md", "# B, spec content");
+		writeFile(repoRoot, "dev-docs/guides/c.md", "# C, guide content");
+		// Vault already has the CANONICAL copies directly under Product/docs — this
+		// is the already-synced state measured before Obsidian restarted.
 		writeFile(vaultDir, "Product/docs/issues/a.md", "# A, 846-ish bytes of content");
+		writeFile(vaultDir, "Product/docs/specs/b.md", "# B, spec content");
+		writeFile(vaultDir, "Product/docs/guides/c.md", "# C, guide content");
 
 		const mapping = makeMapping(repoRoot, "Product/docs", {
 			id: "map-shadow",
@@ -425,17 +432,32 @@ describe("Integration: shared-docsSubdir shadow duplicate (#3bb939c5 — #58/1.3
 		const result = await engine.syncMapping(mapping);
 
 		expect(result.success).toBe(true);
-		expect(fileExists(vaultDir, "Product/docs/dev-docs/issues/a.md")).toBe(false);
 		expect(fs.existsSync(path.join(vaultDir, "Product", "docs", "dev-docs"))).toBe(false);
-		// The canonical copy must be untouched, not duplicated.
+		// The canonical copies must be untouched, not duplicated.
 		expect(fileExists(vaultDir, "Product/docs/issues/a.md")).toBe(true);
+		expect(fileExists(vaultDir, "Product/docs/specs/b.md")).toBe(true);
+		expect(fileExists(vaultDir, "Product/docs/guides/c.md")).toBe(true);
 	});
 
 	test("mirror case: does not recreate a shadow duplicate on the AI side (obs-to-ai)", async () => {
-		writeFile(vaultDir, "Product/docs/issues/a.md", "# A, mirrored");
-		writeFile(repoRoot, "dev-docs/issues/a.md", "# A, mirrored");
+		// This time the AI side's raw aiPath is itself pre-folded to the (already
+		// correct) content root, so re-applying docsSubdir nests an extra shadow
+		// level BELOW it — the mirror of the ai-to-obs shape above. obsidianPath is
+		// left unfolded, so the obs side computes correctly.
+		const shadowAiRoot = path.join(repoRoot, "dev-docs", "dev-docs");
+		fs.mkdirSync(shadowAiRoot, { recursive: true }); // exists, but starts empty
+		// The TRUE, already-correct AI content lives one level up from the shadow root.
+		writeFile(repoRoot, "dev-docs/a.md", "content A");
+		writeFile(repoRoot, "dev-docs/b.md", "content B");
+		writeFile(repoRoot, "dev-docs/c.md", "content C");
+		// The vault (obs) side has the same logical content, matching what's
+		// already correctly on the AI side — this is what would get copied INTO
+		// the AI shadow root without the fix.
+		writeFile(vaultDir, "Product/dev-docs/a.md", "content A");
+		writeFile(vaultDir, "Product/dev-docs/b.md", "content B");
+		writeFile(vaultDir, "Product/dev-docs/c.md", "content C");
 
-		const mapping = makeMapping(repoRoot, "Product/docs", {
+		const mapping = makeMapping(path.join(repoRoot, "dev-docs"), "Product", {
 			id: "map-shadow-mirror",
 			name: "Product docs (mirror)",
 			docsSubdir: "dev-docs",
@@ -445,8 +467,13 @@ describe("Integration: shared-docsSubdir shadow duplicate (#3bb939c5 — #58/1.3
 
 		await engine.syncMapping(mapping);
 
-		// Nothing should have been duplicated a level below repoRoot/dev-docs.
-		expect(fs.existsSync(path.join(repoRoot, "dev-docs", "dev-docs"))).toBe(false);
+		// The shadow root exists (created above) but must stay empty — nothing
+		// should have been duplicated into it.
+		expect(fs.readdirSync(shadowAiRoot)).toEqual([]);
+		// The true, already-correct content one level up is untouched.
+		expect(fileExists(repoRoot, "dev-docs/a.md")).toBe(true);
+		expect(fileExists(repoRoot, "dev-docs/b.md")).toBe(true);
+		expect(fileExists(repoRoot, "dev-docs/c.md")).toBe(true);
 	});
 
 	test("negative control: a genuinely new file (no matching sibling one level up) still syncs normally", async () => {
@@ -487,6 +514,41 @@ describe("Integration: shared-docsSubdir shadow duplicate (#3bb939c5 — #58/1.3
 		// Sizes differ from the "canonical" sibling, so this is treated as a real,
 		// distinct file rather than a shadow duplicate, and is copied through.
 		expect(fileExists(vaultDir, "Product/docs/dev-docs/issues/a.md")).toBe(true);
+	});
+
+	test("negative control: a single coincidental content-identical match in the plugin's own DEFAULT mapping shape does not block the rest of the sync", async () => {
+		// This is the exact false-positive class an earlier (size-only, per-file)
+		// version of this guard was rejected for on independent verification:
+		// docsSubdir="docs" is the plugin's own new-mapping default (see
+		// mapping-modal.ts), so `basename(destRoot) === docsSubdir` is true for
+		// the MOST COMMON mapping shape, not just a folded/buggy one. A lone
+		// coincidental match (e.g. two unrelated folders both shipping a
+		// byte-identical boilerplate LICENSE.md) must not silently drop the rest
+		// of an otherwise-legitimate, non-shadowed sync.
+		writeFile(repoRoot, "docs/LICENSE.md", "MIT License boilerplate, identical everywhere");
+		writeFile(repoRoot, "docs/architecture.md", "# Real, new architecture notes");
+		writeFile(repoRoot, "docs/api.md", "# Real, new API notes");
+		// Vault "Product" (the mapping's PARENT folder, one level up from the
+		// correctly-computed obsDocsPath="Product/docs") happens to already have
+		// an unrelated file with the exact same relative path AND content —
+		// pure coincidence, not evidence of a docsSubdir fold.
+		writeFile(vaultDir, "Product/LICENSE.md", "MIT License boilerplate, identical everywhere");
+
+		const mapping = makeMapping(repoRoot, "Product", {
+			id: "map-default-shape-coincidence",
+			name: "Product (default shape, one coincidental match)",
+			docsSubdir: "docs", // the plugin's own default — NOT a folded/buggy mapping
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		const result = await engine.syncMapping(mapping);
+
+		expect(result.success).toBe(true);
+		// The lone coincidental match must not veto the rest of the sync.
+		expect(fileExists(vaultDir, "Product/docs/architecture.md")).toBe(true);
+		expect(fileExists(vaultDir, "Product/docs/api.md")).toBe(true);
+		expect(fileExists(vaultDir, "Product/docs/LICENSE.md")).toBe(true);
 	});
 });
 
