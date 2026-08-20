@@ -346,7 +346,9 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     // Sync Deletions (FR-060)
     new Setting(containerEl)
       .setName("Sync deletions")
-      .setDesc("When a file is deleted in one location, delete it in the other location too")
+      .setDesc(
+        "When a file is deleted in one location, delete it in the other location too. Off by default: while it is off, a file you delete on one side is restored from the other side on the next sync."
+      )
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.syncDeletions)

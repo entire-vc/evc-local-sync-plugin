@@ -16,4 +16,4 @@ This project uses [EVC Local Sync](https://github.com/entire-vc/evc-local-sync-p
 ### Sync behavior:
 - Changes in `/docs` are automatically synced to Obsidian vault
 - Changes in Obsidian are automatically synced to `/docs`
-- Conflicts are resolved by keeping both copies (manual merge needed)
+- Conflicts are resolved by the strategy set in the plugin settings (default: the newer file wins)

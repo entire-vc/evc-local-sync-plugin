@@ -47,9 +47,10 @@ body:
     attributes:
       label: Conflict strategy used
       options:
-        - Keep both copies
-        - Overwrite with newer
-        - Prompt on conflict
+        - Newer file wins
+        - Always ask
+        - AI project wins
+        - Obsidian wins
     validations:
       required: true
   - type: textarea

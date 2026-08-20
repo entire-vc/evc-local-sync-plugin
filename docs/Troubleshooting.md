@@ -27,6 +27,10 @@ The CSV log contains timestamps, file paths, sync direction, actions taken, and 
 
 > **Warning:** Deletion sync propagates file deletions across locations. A file deleted on one side will be removed from the other side on next sync.
 
+Deletion sync is **off by default**. While it is off, deleting a file on one side does not delete
+it on the other — and because the file still exists there, the next sync copies it back. A file that
+reappears after you deleted it is this setting, not a bug.
+
 If you enable deletion sync, follow these steps to stay safe:
 
 1. **Enable backups** in settings (on by default) — the plugin creates a `.bak` copy before deleting
