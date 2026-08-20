@@ -71,9 +71,9 @@ Connect your team's project docs to a shared vault. When any dev updates `/docs`
 
 - **Bidirectional sync** (vault ↔ local folders)
 - **Multiple mappings** (multiple projects / subfolders)
-- **Configurable conflict handling** (keep both / overwrite / prompt)
+- **Configurable conflict handling** (newer file wins / Obsidian wins / AI project wins / always ask)
 - **Auto sync** (on-change, on-startup, scheduled)
-- **File deletion sync** — deleted files sync across locations
+- **File deletion sync** — optional, off by default: when enabled, deleting a file in one location deletes it in the other
 - **Per-mapping settings** — override conflict resolution and file types per project
 - **Dry-run preview** — see changes before syncing
 - **File watching** with configurable debounce
@@ -92,7 +92,7 @@ Sync conflicts happen when both sides change before a sync runs.
 
 **Recommended starting point:**
 - Start with **manual sync** while testing your mapping
-- Use **Keep both copies** until you're confident
+- Use **Always ask** until you're confident — it stops on every conflict instead of picking a side for you
 - Check [`docs/Troubleshooting.md`](./docs/Troubleshooting.md) for common edge cases
 
 ---

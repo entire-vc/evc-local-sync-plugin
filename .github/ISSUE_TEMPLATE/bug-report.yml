@@ -70,7 +70,8 @@ body:
       label: Conflict strategy
       description: Which conflict handling strategy are you using?
       options:
-        - Keep both copies
-        - Overwrite with newer
-        - Prompt on conflict
+        - Newer file wins
+        - Always ask
+        - AI project wins
+        - Obsidian wins
         - N/A
