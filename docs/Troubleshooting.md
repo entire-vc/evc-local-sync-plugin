@@ -37,6 +37,39 @@ If you enable deletion sync, follow these steps to stay safe:
 
 Deletions from Obsidian use the system trash (recoverable). Deletions from the AI project side use permanent `fs.unlink` — this is why backups matter.
 
+If a folder is *also* shared through Team Relay, deletion has a second, separate failure mode — see [Deleted files come back](#deleted-files-come-back-the-folder-is-also-a-team-relay-share) below.
+
+---
+
+## Deleted files come back (the folder is also a Team Relay share)
+
+**Symptom:** You delete files from a folder while Obsidian is closed. On the next launch they
+reappear one at a time, every few seconds, until all of them are back.
+
+**Cause:** That folder is also shared through EVC Team Relay. Team Relay is a CRDT client — a
+change made on disk while it is offline is not an operation it can replay, it is a divergence.
+On reconnect the relay's copy is authoritative, so it puts the files back. Measured: 115 files
+deleted with Obsidian closed, 115 restored, one every 5-8 seconds, over ~13 minutes.
+
+**Fix:** Clean up a shared folder **with Obsidian running**, so the deletion is recorded as an
+operation and reaches the relay.
+
+Two things to know before you do:
+
+- **A deletion inside a shared folder reaches everyone subscribed to that share.** With the relay
+  connected this is not local housekeeping, it is an outbound change.
+- **Restore is per-share, not all-or-nothing.** A folder the relay holds no copy of is not restored
+  at all — so check the shares you care about individually, rather than concluding from one folder
+  that nothing came back.
+
+**Which plugin moved the file?** With both installed the symptoms overlap. These tell them apart:
+
+| Signal | Local Sync | Team Relay |
+|---|---|---|
+| `plugins/evc-local-sync/sync-log.json` mtime | updates | untouched |
+| Mirrored to your mapped AI project path | yes | no — not its scope |
+| Rate files appear | a batch in one pass | one every 5-8 seconds |
+
 ---
 
 ## macOS: external folder not syncing (permissions)
