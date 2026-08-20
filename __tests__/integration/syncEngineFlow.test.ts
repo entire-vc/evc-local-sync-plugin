@@ -437,6 +437,17 @@ describe("Integration: shared-docsSubdir shadow duplicate (#3bb939c5 — #58/1.3
 		expect(fileExists(vaultDir, "Product/docs/issues/a.md")).toBe(true);
 		expect(fileExists(vaultDir, "Product/docs/specs/b.md")).toBe(true);
 		expect(fileExists(vaultDir, "Product/docs/guides/c.md")).toBe(true);
+
+		// #3bb939c5 follow-up: a guard-skipped write must be recorded as a "skip",
+		// not silently reported as a successful "copy" — the previous behavior made
+		// sync-log.json (and filesCopied) claim these 3 files were copied even
+		// though the guard no-op'd every one of them, hiding the guard's own
+		// activity from the only persisted record of what actually happened.
+		expect(result.filesCopied).toBe(0);
+		expect(result.filesSkipped).toBe(3);
+		const skippedNames = result.files.filter((f) => f.action === "skip").map((f) => f.file).sort();
+		expect(skippedNames).toEqual(["guides/c.md", "issues/a.md", "specs/b.md"]);
+		expect(result.files.some((f) => f.action === "copy")).toBe(false);
 	});
 
 	test("mirror case: does not recreate a shadow duplicate on the AI side (obs-to-ai)", async () => {

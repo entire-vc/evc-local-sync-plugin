@@ -336,14 +336,25 @@ export class SyncEngine {
         if (!obsFile) {
           // File only in AI -> copy to Obsidian
           try {
-            await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath, obsShadowSet);
-            files.push({
-              file: relPath,
-              action: "copy",
-              direction: "ai-to-obs",
-              success: true,
-            });
-            filesCopied++;
+            const written = await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath, obsShadowSet);
+            if (written) {
+              files.push({
+                file: relPath,
+                action: "copy",
+                direction: "ai-to-obs",
+                success: true,
+              });
+              filesCopied++;
+            } else {
+              files.push({
+                file: relPath,
+                action: "skip",
+                direction: "ai-to-obs",
+                success: true,
+                error: "guard-skipped (self-nesting or shadow duplicate)",
+              });
+              filesSkipped++;
+            }
           } catch (error) {
             const errorMsg = `Failed to copy ${relPath}: ${(error as Error).message}`;
             errors.push(errorMsg);
@@ -393,14 +404,25 @@ export class SyncEngine {
 
             if (resolution.decision === "use-ai") {
               try {
-                await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath, obsShadowSet);
-                files.push({
-                  file: relPath,
-                  action: "update",
-                  direction: "ai-to-obs",
-                  success: true,
-                });
-                filesCopied++;
+                const written = await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath, obsShadowSet);
+                if (written) {
+                  files.push({
+                    file: relPath,
+                    action: "update",
+                    direction: "ai-to-obs",
+                    success: true,
+                  });
+                  filesCopied++;
+                } else {
+                  files.push({
+                    file: relPath,
+                    action: "skip",
+                    direction: "ai-to-obs",
+                    success: true,
+                    error: "guard-skipped (self-nesting or shadow duplicate)",
+                  });
+                  filesSkipped++;
+                }
               } catch (error) {
                 const errorMsg = `Failed to update ${relPath}: ${(error as Error).message}`;
                 errors.push(errorMsg);
@@ -414,14 +436,25 @@ export class SyncEngine {
               }
             } else if (resolution.decision === "use-obsidian" && mapping.bidirectional) {
               try {
-                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
-                files.push({
-                  file: relPath,
-                  action: "update",
-                  direction: "obs-to-ai",
-                  success: true,
-                });
-                filesCopied++;
+                const written = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
+                if (written) {
+                  files.push({
+                    file: relPath,
+                    action: "update",
+                    direction: "obs-to-ai",
+                    success: true,
+                  });
+                  filesCopied++;
+                } else {
+                  files.push({
+                    file: relPath,
+                    action: "skip",
+                    direction: "obs-to-ai",
+                    success: true,
+                    error: "guard-skipped (self-nesting or shadow duplicate)",
+                  });
+                  filesSkipped++;
+                }
               } catch (error) {
                 const errorMsg = `Failed to update ${relPath}: ${(error as Error).message}`;
                 errors.push(errorMsg);
@@ -454,14 +487,25 @@ export class SyncEngine {
           if (!aiFileMap.has(this.normalizePathKey(relPath))) {
             // File only in Obsidian -> copy to AI
             try {
-              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
-              files.push({
-                file: relPath,
-                action: "copy",
-                direction: "obs-to-ai",
-                success: true,
-              });
-              filesCopied++;
+              const written = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
+              if (written) {
+                files.push({
+                  file: relPath,
+                  action: "copy",
+                  direction: "obs-to-ai",
+                  success: true,
+                });
+                filesCopied++;
+              } else {
+                files.push({
+                  file: relPath,
+                  action: "skip",
+                  direction: "obs-to-ai",
+                  success: true,
+                  error: "guard-skipped (self-nesting or shadow duplicate)",
+                });
+                filesSkipped++;
+              }
             } catch (error) {
               const errorMsg = `Failed to copy ${relPath}: ${(error as Error).message}`;
               errors.push(errorMsg);
@@ -485,14 +529,25 @@ export class SyncEngine {
           if (!aiFile) {
             // File only in Obsidian -> copy to AI
             try {
-              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
-              files.push({
-                file: relPath,
-                action: "copy",
-                direction: "obs-to-ai",
-                success: true,
-              });
-              filesCopied++;
+              const written = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
+              if (written) {
+                files.push({
+                  file: relPath,
+                  action: "copy",
+                  direction: "obs-to-ai",
+                  success: true,
+                });
+                filesCopied++;
+              } else {
+                files.push({
+                  file: relPath,
+                  action: "skip",
+                  direction: "obs-to-ai",
+                  success: true,
+                  error: "guard-skipped (self-nesting or shadow duplicate)",
+                });
+                filesSkipped++;
+              }
             } catch (error) {
               const errorMsg = `Failed to copy ${relPath}: ${(error as Error).message}`;
               errors.push(errorMsg);
@@ -510,14 +565,25 @@ export class SyncEngine {
 
             if (comparison !== "same" && obsFile.mtime > aiFile.mtime) {
               try {
-                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
-                files.push({
-                  file: relPath,
-                  action: "update",
-                  direction: "obs-to-ai",
-                  success: true,
-                });
-                filesCopied++;
+                const written = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
+                if (written) {
+                  files.push({
+                    file: relPath,
+                    action: "update",
+                    direction: "obs-to-ai",
+                    success: true,
+                  });
+                  filesCopied++;
+                } else {
+                  files.push({
+                    file: relPath,
+                    action: "skip",
+                    direction: "obs-to-ai",
+                    success: true,
+                    error: "guard-skipped (self-nesting or shadow duplicate)",
+                  });
+                  filesSkipped++;
+                }
               } catch (error) {
                 const errorMsg = `Failed to update ${relPath}: ${(error as Error).message}`;
                 errors.push(errorMsg);
@@ -1082,13 +1148,24 @@ export class SyncEngine {
   /**
    * Copy file from AI project to Obsidian vault
    */
+  /**
+   * Copy a file from the AI project into the Obsidian vault.
+   *
+   * Returns `false` when a self-nesting or shadow-duplicate guard silently
+   * no-ops the write instead of throwing — callers MUST check this and record
+   * a "skip" action, not "copy"/"update". Before this (#3bb939c5 follow-up),
+   * a guard-skipped write still returned normally, so every call site recorded
+   * a false "copy succeeded" entry (and counted it in filesCopied) even though
+   * nothing was written — the guard's own activity was invisible in
+   * sync-log.json, and the only trace was a console.warn nobody would see.
+   */
   private async copyFileToObsidian(
     sourcePath: string,
     obsDocsPath: string,
     relativePath: string,
     aiDocsPath?: string,
     shadowedRelativePaths?: Set<string>
-  ): Promise<void> {
+  ): Promise<boolean> {
     // Resolve vault path with correct folder casing (e.g. "gtm/" → "GTM/" on macOS)
     const rawTargetPath = normalizePath(path.join(obsDocsPath, relativePath));
 
@@ -1102,7 +1179,7 @@ export class SyncEngine {
       console.warn(
         `EVC Sync: skipped write to avoid recursive nesting: ${rawTargetPath}`
       );
-      return;
+      return false;
     }
 
     // Shared-docsSubdir shadow guard (#3bb939c5): shadowedRelativePaths is computed
@@ -1115,7 +1192,7 @@ export class SyncEngine {
         `EVC Sync: skipped write — "${relativePath}" is a confirmed duplicate of content ` +
           `already synced one level up from "${obsDocsPath}": ${rawTargetPath}`
       );
-      return;
+      return false;
     }
 
     // Read source file and get its mtime
@@ -1152,10 +1229,12 @@ export class SyncEngine {
     if (fs.existsSync(absoluteTargetPath)) {
       fs.utimesSync(absoluteTargetPath, sourceMtime, sourceMtime);
     }
+    return true;
   }
 
   /**
-   * Copy file from Obsidian vault to AI project
+   * Copy file from Obsidian vault to AI project.
+   * Returns `false` on a guard-skip — see copyFileToObsidian's doc comment.
    */
   private async copyFileToAi(
     sourcePath: string,
@@ -1163,7 +1242,7 @@ export class SyncEngine {
     relativePath: string,
     obsDocsPath?: string,
     shadowedRelativePaths?: Set<string>
-  ): Promise<void> {
+  ): Promise<boolean> {
     const targetPath = path.join(aiDocsPath, relativePath);
 
     // Self-nesting guard (#14, widened #9d86c756): checked against BOTH the
@@ -1176,7 +1255,7 @@ export class SyncEngine {
       console.warn(
         `EVC Sync: skipped write to avoid recursive nesting: ${targetPath}`
       );
-      return;
+      return false;
     }
 
     // Shared-docsSubdir shadow guard (#3bb939c5): mirror of the ai-to-obs check in
@@ -1186,7 +1265,7 @@ export class SyncEngine {
         `EVC Sync: skipped write — "${relativePath}" is a confirmed duplicate of content ` +
           `already synced one level up from "${aiDocsPath}": ${targetPath}`
       );
-      return;
+      return false;
     }
 
     // Read from Obsidian vault using the abstract file path
@@ -1224,6 +1303,7 @@ export class SyncEngine {
     if (sourceMtime) {
       fs.utimesSync(targetPath, sourceMtime, sourceMtime);
     }
+    return true;
   }
 
   /**
