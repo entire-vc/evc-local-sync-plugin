@@ -139,7 +139,8 @@ Common topics: renames/moves · case sensitivity (Windows/macOS) · watcher miss
 ## Community
 
 - 💬 [Discussions](https://github.com/entire-vc/.github/discussions)
-- 📧 in@entire.vc
+- 📧 <support@entire.vc>
+- 🛟 [Where to get help and what to expect](https://github.com/entire-vc/evc-local-sync-plugin/blob/main/SUPPORT.md)
 
 ## License
 
