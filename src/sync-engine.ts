@@ -282,7 +282,7 @@ export class SyncEngine {
         if (!obsFile) {
           // File only in AI -> copy to Obsidian
           try {
-            await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath);
+            await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath);
             files.push({
               file: relPath,
               action: "copy",
@@ -339,7 +339,7 @@ export class SyncEngine {
 
             if (resolution.decision === "use-ai") {
               try {
-                await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath);
+                await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath);
                 files.push({
                   file: relPath,
                   action: "update",
@@ -360,7 +360,7 @@ export class SyncEngine {
               }
             } else if (resolution.decision === "use-obsidian" && mapping.bidirectional) {
               try {
-                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath);
+                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath);
                 files.push({
                   file: relPath,
                   action: "update",
@@ -400,7 +400,7 @@ export class SyncEngine {
           if (!aiFileMap.has(this.normalizePathKey(relPath))) {
             // File only in Obsidian -> copy to AI
             try {
-              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath);
+              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath);
               files.push({
                 file: relPath,
                 action: "copy",
@@ -431,7 +431,7 @@ export class SyncEngine {
           if (!aiFile) {
             // File only in Obsidian -> copy to AI
             try {
-              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath);
+              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath);
               files.push({
                 file: relPath,
                 action: "copy",
@@ -456,7 +456,7 @@ export class SyncEngine {
 
             if (comparison !== "same" && obsFile.mtime > aiFile.mtime) {
               try {
-                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath);
+                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath);
                 files.push({
                   file: relPath,
                   action: "update",
@@ -1031,22 +1031,19 @@ export class SyncEngine {
   private async copyFileToObsidian(
     sourcePath: string,
     obsDocsPath: string,
-    relativePath: string
+    relativePath: string,
+    aiDocsPath?: string
   ): Promise<void> {
     // Resolve vault path with correct folder casing (e.g. "gtm/" → "GTM/" on macOS)
     const rawTargetPath = normalizePath(path.join(obsDocsPath, relativePath));
 
-    // Self-nesting guard (#14): refuse to write a destination that would nest the
-    // root's folder name inside itself (e.g. "docs/docs/...") — caps runaway growth
-    // even if the recursive-scan boundary checks miss an edge.
-    const rootBasename = path.basename(normalizePath(obsDocsPath));
-    const relFirstSegment = this.normalizeRelativePath(relativePath).split("/")[0];
-    // Only inspect the segment we control (root basename + relative path), so a
-    // user root path that legitimately repeats a segment can't deadlock the mapping.
-    if (
-      this.hasRepeatedSegment(`${rootBasename}/${relativePath}`) ||
-      (rootBasename.length > 0 && relFirstSegment === rootBasename)
-    ) {
+    // Self-nesting guard (#14, widened #9d86c756): checked against BOTH the
+    // destination (obsDocsPath) AND source (aiDocsPath) root basenames — see
+    // isSelfNestedRelPath for why a destination-only check misses the
+    // docsSubdir/aiPath-fold class of self-nesting.
+    const obsRootBasename = path.basename(normalizePath(obsDocsPath));
+    const aiRootBasename = aiDocsPath ? path.basename(aiDocsPath.replace(/[/\\]+$/, "")) : undefined;
+    if (this.isSelfNestedRelPath(relativePath, [obsRootBasename, aiRootBasename])) {
       console.warn(
         `EVC Sync: skipped write to avoid recursive nesting: ${rawTargetPath}`
       );
@@ -1094,21 +1091,18 @@ export class SyncEngine {
   private async copyFileToAi(
     sourcePath: string,
     aiDocsPath: string,
-    relativePath: string
+    relativePath: string,
+    obsDocsPath?: string
   ): Promise<void> {
     const targetPath = path.join(aiDocsPath, relativePath);
 
-    // Self-nesting guard (#14): refuse to write a destination that would nest the
-    // root's folder name inside itself (e.g. "docs/docs/...") — caps runaway growth
-    // even if the recursive-scan boundary checks miss an edge.
-    const rootBasename = path.basename(aiDocsPath.replace(/[/\\]+$/, ""));
-    const relFirstSegment = this.normalizeRelativePath(relativePath).split("/")[0];
-    // Only inspect the segment we control (root basename + relative path), so a
-    // user root path that legitimately repeats a segment can't deadlock the mapping.
-    if (
-      this.hasRepeatedSegment(`${rootBasename}/${relativePath}`) ||
-      (rootBasename.length > 0 && relFirstSegment === rootBasename)
-    ) {
+    // Self-nesting guard (#14, widened #9d86c756): checked against BOTH the
+    // destination (aiDocsPath) AND source (obsDocsPath) root basenames — see
+    // isSelfNestedRelPath for why a destination-only check misses the
+    // docsSubdir/aiPath-fold class of self-nesting.
+    const aiRootBasename = path.basename(aiDocsPath.replace(/[/\\]+$/, ""));
+    const obsRootBasename = obsDocsPath ? path.basename(normalizePath(obsDocsPath)) : undefined;
+    if (this.isSelfNestedRelPath(relativePath, [aiRootBasename, obsRootBasename])) {
       console.warn(
         `EVC Sync: skipped write to avoid recursive nesting: ${targetPath}`
       );
@@ -1315,6 +1309,33 @@ export class SyncEngine {
     const parts = p.replace(/\\/g, "/").split("/").filter((s) => s.length > 0);
     for (let i = 1; i < parts.length; i++) {
       if (parts[i] === parts[i - 1]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Self-nesting guard, checked against BOTH of the mapping's roots (#9d86c756).
+   *
+   * The #14 guard only compared a write's leading relative-path segment against the
+   * DESTINATION root's own basename — one-directional by construction. That misses
+   * exactly the shape this incident produced: folding `docsSubdir` into `aiPath`
+   * (aiPath="…/dev-docs", docsSubdir="") leaves a same-named "dev-docs" folder sitting
+   * inside the now-widened Obsidian root ("docs"). ai-to-obs write is destination
+   * "docs" — doesn't match "dev-docs", so the old guard let it through and resurrected
+   * the folder every time it was deleted by hand (docsSubdir/aiPath overlap bug).
+   * Checking against BOTH roots' basenames makes the guard symmetric: the segment
+   * matches the AI root's basename ("dev-docs") regardless of which direction the
+   * copy runs, so it is caught either way.
+   */
+  private isSelfNestedRelPath(relativePath: string, rootBasenames: Array<string | undefined>): boolean {
+    const relFirstSegment = this.normalizeRelativePath(relativePath).split("/")[0];
+    for (const rootBasename of rootBasenames) {
+      if (!rootBasename) {
+        continue;
+      }
+      if (relFirstSegment === rootBasename || this.hasRepeatedSegment(`${rootBasename}/${relativePath}`)) {
         return true;
       }
     }

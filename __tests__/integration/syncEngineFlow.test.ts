@@ -294,6 +294,86 @@ describe("Integration: overlapping bidirectional mappings must not nest docs/doc
 	});
 });
 
+describe("Integration: docsSubdir-fold self-nesting (#9d86c756)", () => {
+	// Reproduces the real incident: a mapping originally configured as
+	// aiPath="<project>", docsSubdir="dev-docs" gets its docsSubdir folded into
+	// aiPath ("<project>/dev-docs", docsSubdir="") without the Obsidian side
+	// changing. The AI root's own basename ("dev-docs") then equals the name of a
+	// leftover duplicate folder that already exists deeper in the AI tree from
+	// before the #14 guard existed — a destination-only basename check misses this
+	// because the Obsidian *destination* root's basename ("docs") never matches.
+	let aiProjectRoot: string;
+	let vaultDir: string;
+	let engine: SyncEngine;
+	let vault: ReturnType<typeof makeVaultMock>;
+	let aiDocsPath: string; // "<aiProjectRoot>/dev-docs" — the folded aiPath
+
+	beforeEach(async () => {
+		aiProjectRoot = makeTempDir();
+		vaultDir = makeTempDir();
+		vault = makeVaultMock(vaultDir);
+		aiDocsPath = path.join(aiProjectRoot, "dev-docs");
+
+		const app = { vault, _vaultBasePath: vaultDir } as unknown as import("obsidian").App;
+		engine = new SyncEngine(app, makeSettings({ mappings: [] }), "/tmp/evc-ls-plugin");
+		await engine.init();
+	});
+
+	afterEach(() => {
+		rmDir(aiProjectRoot);
+		rmDir(vaultDir);
+	});
+
+	test("does not resurrect a same-named leftover subtree into the Obsidian side after it was deleted by hand", async () => {
+		// Legit content that should sync normally.
+		writeFile(aiDocsPath, "readme.md", "# Docs");
+		// Pre-existing leftover duplicate on the AI side only (simulates content
+		// created by the old bug before the #14 guard existed; the Obsidian-side
+		// copy was already deleted by hand — the 2026-05-25 cleanup attempt).
+		writeFile(aiDocsPath, "dev-docs/a.md", "# Duplicate");
+
+		const mapping = makeMapping(aiDocsPath, "docs", {
+			id: "map-fold",
+			name: "TR docs (folded)",
+			docsSubdir: "",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		await engine.syncMapping(mapping);
+
+		// Normal content still syncs.
+		expect(fileExists(vaultDir, "docs/readme.md")).toBe(true);
+		// The leftover must NOT be resurrected into the vault.
+		expect(fileExists(vaultDir, "docs/dev-docs/a.md")).toBe(false);
+		expect(fs.existsSync(path.join(vaultDir, "docs", "dev-docs"))).toBe(false);
+	});
+
+	test("does not propagate a same-named leftover subtree from Obsidian back into the AI side", async () => {
+		// Mirror case: the leftover duplicate sits on the Obsidian side instead,
+		// and the AI side's own root basename ("dev-docs") matches it — the
+		// pre-existing #14 guard already caught this direction (destination
+		// basename == segment), this test locks that in as a regression guard now
+		// that the check has been refactored into a shared helper.
+		writeFile(vaultDir, "docs/readme.md", "# Docs");
+		writeFile(vaultDir, "docs/dev-docs/a.md", "# Duplicate");
+		fs.mkdirSync(aiDocsPath, { recursive: true });
+
+		const mapping = makeMapping(aiDocsPath, "docs", {
+			id: "map-fold-2",
+			name: "TR docs (folded, reverse)",
+			docsSubdir: "",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		await engine.syncMapping(mapping);
+
+		expect(fileExists(aiDocsPath, "readme.md")).toBe(true);
+		expect(fs.existsSync(path.join(aiDocsPath, "dev-docs"))).toBe(false);
+	});
+});
+
 describe("Integration: path-utils expandHome", () => {
 	test("expands ~ to HOME directory", () => {
 		// Import after mock setup
