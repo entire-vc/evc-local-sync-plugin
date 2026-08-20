@@ -374,6 +374,122 @@ describe("Integration: docsSubdir-fold self-nesting (#9d86c756)", () => {
 	});
 });
 
+describe("Integration: shared-docsSubdir shadow duplicate (#3bb939c5 — #58/1.3.4 did not hold)", () => {
+	// Reproduces the LIVE incident measured on Pavel's vault after release 1.3.4:
+	// #58 widened the self-nesting guard to compare a write's relativePath
+	// against BOTH mapping roots' basenames — but that only catches a leftover
+	// subtree whose name happens to match a *relativePath segment*. Here the
+	// offending "dev-docs" segment is the DESTINATION ROOT ITSELF (one level
+	// above any relativePath the #58 guard ever inspects): docsSubdir is a
+	// single field applied by BOTH getAiDocsPath() and getObsidianDocsPath().
+	// A mapping shaped aiPath="<repo>" + docsSubdir="dev-docs" (repo's docs
+	// live under dev-docs/) with obsidianPath="Vault/Product/docs" (already the
+	// canonical folder) computes obsDocsPath="Vault/Product/docs/dev-docs" —
+	// nesting a duplicate one level below the real content, exactly matching
+	// the live measurement (Local Sync docs/dev-docs/issues/001-….md,
+	// byte-identical to the already-existing docs/issues/001-….md).
+	let repoRoot: string;
+	let vaultDir: string;
+	let engine: SyncEngine;
+	let vault: ReturnType<typeof makeVaultMock>;
+
+	beforeEach(async () => {
+		repoRoot = makeTempDir();
+		vaultDir = makeTempDir();
+		vault = makeVaultMock(vaultDir);
+		const app = { vault, _vaultBasePath: vaultDir } as unknown as import("obsidian").App;
+		engine = new SyncEngine(app, makeSettings({ mappings: [] }), "/tmp/evc-ls-plugin");
+		await engine.init();
+	});
+
+	afterEach(() => {
+		rmDir(repoRoot);
+		rmDir(vaultDir);
+	});
+
+	test("does not recreate docs/dev-docs when the same file already exists one level up (ai-to-obs)", async () => {
+		// Repo's real content root is repoRoot/dev-docs (docsSubdir="dev-docs").
+		writeFile(repoRoot, "dev-docs/issues/a.md", "# A, 846-ish bytes of content");
+		// Vault already has the CANONICAL copy directly under Product/docs — this
+		// is the already-synced state Bill measured before Obsidian restarted.
+		writeFile(vaultDir, "Product/docs/issues/a.md", "# A, 846-ish bytes of content");
+
+		const mapping = makeMapping(repoRoot, "Product/docs", {
+			id: "map-shadow",
+			name: "Product docs",
+			docsSubdir: "dev-docs",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		const result = await engine.syncMapping(mapping);
+
+		expect(result.success).toBe(true);
+		expect(fileExists(vaultDir, "Product/docs/dev-docs/issues/a.md")).toBe(false);
+		expect(fs.existsSync(path.join(vaultDir, "Product", "docs", "dev-docs"))).toBe(false);
+		// The canonical copy must be untouched, not duplicated.
+		expect(fileExists(vaultDir, "Product/docs/issues/a.md")).toBe(true);
+	});
+
+	test("mirror case: does not recreate a shadow duplicate on the AI side (obs-to-ai)", async () => {
+		writeFile(vaultDir, "Product/docs/issues/a.md", "# A, mirrored");
+		writeFile(repoRoot, "dev-docs/issues/a.md", "# A, mirrored");
+
+		const mapping = makeMapping(repoRoot, "Product/docs", {
+			id: "map-shadow-mirror",
+			name: "Product docs (mirror)",
+			docsSubdir: "dev-docs",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		await engine.syncMapping(mapping);
+
+		// Nothing should have been duplicated a level below repoRoot/dev-docs.
+		expect(fs.existsSync(path.join(repoRoot, "dev-docs", "dev-docs"))).toBe(false);
+	});
+
+	test("negative control: a genuinely new file (no matching sibling one level up) still syncs normally", async () => {
+		// Same double-applied-docsSubdir shape, but the file is NOT a pre-existing
+		// duplicate — nothing sits at "Product/docs/new-file.md" yet. Confirms the
+		// guard isn't blanket-blocking every write into a docsSubdir-named root,
+		// only writes that would duplicate already-synced content.
+		writeFile(repoRoot, "dev-docs/new-file.md", "# Brand new");
+
+		const mapping = makeMapping(repoRoot, "Product/docs", {
+			id: "map-shadow-negative",
+			name: "Product docs (negative control)",
+			docsSubdir: "dev-docs",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		const result = await engine.syncMapping(mapping);
+
+		expect(result.success).toBe(true);
+		expect(fileExists(vaultDir, "Product/docs/dev-docs/new-file.md")).toBe(true);
+	});
+
+	test("negative control: same relative path but DIFFERENT content one level up still syncs (size mismatch is not treated as a shadow)", async () => {
+		writeFile(repoRoot, "dev-docs/issues/a.md", "# Genuinely different content, much longer than the sibling");
+		writeFile(vaultDir, "Product/docs/issues/a.md", "# short");
+
+		const mapping = makeMapping(repoRoot, "Product/docs", {
+			id: "map-shadow-size-mismatch",
+			name: "Product docs (size mismatch)",
+			docsSubdir: "dev-docs",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		await engine.syncMapping(mapping);
+
+		// Sizes differ from the "canonical" sibling, so this is treated as a real,
+		// distinct file rather than a shadow duplicate, and is copied through.
+		expect(fileExists(vaultDir, "Product/docs/dev-docs/issues/a.md")).toBe(true);
+	});
+});
+
 describe("Integration: path-utils expandHome", () => {
 	test("expands ~ to HOME directory", () => {
 		// Import after mock setup
