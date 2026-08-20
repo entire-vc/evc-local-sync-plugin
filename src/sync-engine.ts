@@ -211,12 +211,66 @@ export class SyncEngine {
         throw new Error(`AI docs path does not exist: ${aiDocsPath}`);
       }
 
-      // Ensure Obsidian folder exists
-      await this.ensureObsidianFolder(obsDocsPath);
-
-      // Get file lists from both sides (using per-mapping settings)
+      // AI-side file list doesn't depend on the Obsidian folder existing, so gather it
+      // first — the shadow detection below needs it before deciding whether to create
+      // obsDocsPath at all (#3bb939c5).
       const aiFiles = this.getFileListForMapping(aiDocsPath, mapping);
+
+      // Shared-docsSubdir shadow guard (#3bb939c5, hardened after verifier DO-NOT-SHIP
+      // on the size-only version): docsSubdir is ONE field applied by BOTH
+      // getAiDocsPath() and getObsidianDocsPath(). When obsidianPath already IS the
+      // canonical docs folder while docsSubdir also names a real AI-side subfolder,
+      // the same field gets wrongly re-applied here too, computing a destination root
+      // one level below where the content already lives — see detectShadowedRelativePaths
+      // for the full mechanism and why this requires CONTENT-identical matches across a
+      // MAJORITY of the tree, not a size-only check on one file at a time (a single
+      // coincidental match — e.g. two unrelated folders both containing a byte-identical
+      // boilerplate LICENSE.md — must not silently drop a legitimately new file).
+      const obsShadowSet = await this.detectShadowedRelativePaths(
+        aiFiles,
+        obsDocsPath,
+        mapping.docsSubdir,
+        async (candidatePath) => {
+          const abs = this.resolveVaultPath(normalizePath(candidatePath));
+          const file = this.app.vault.getAbstractFileByPath(abs);
+          if (!(file instanceof TFile)) {
+            return undefined;
+          }
+          try {
+            return await this.app.vault.read(file);
+          } catch {
+            return undefined;
+          }
+        }
+      );
+
+      // Ensure Obsidian folder exists — but NOT if EVERY file about to be written here
+      // is a confirmed shadow duplicate (nothing genuinely new would ever land in it):
+      // eagerly touching it into existence would recreate the empty "…/dev-docs"
+      // skeleton every run even though the per-file guard below correctly skips every
+      // write into it — an empty duplicate folder is still a duplicate folder. A
+      // partially-shadowed mapping still needs the folder for its genuinely new files,
+      // so this only skips creation in the fully-shadowed case.
+      const looksFullyShadowed = aiFiles.length > 0 && obsShadowSet.size === aiFiles.length;
+      if (!looksFullyShadowed) {
+        await this.ensureObsidianFolder(obsDocsPath);
+      }
+
       const obsFiles = await this.getObsidianFileListForMapping(obsDocsPath, mapping);
+
+      // Mirror of obsShadowSet for the obs-to-ai direction.
+      const aiShadowSet = await this.detectShadowedRelativePaths(
+        obsFiles,
+        aiDocsPath,
+        mapping.docsSubdir,
+        async (candidatePath) => {
+          try {
+            return fs.readFileSync(candidatePath, "utf-8");
+          } catch {
+            return undefined;
+          }
+        }
+      );
 
       // Create lookup maps with case-insensitive keys on macOS/Windows
       const aiFileMap = new Map(aiFiles.map((f) => [this.normalizePathKey(f.relativePath), f]));
@@ -282,7 +336,7 @@ export class SyncEngine {
         if (!obsFile) {
           // File only in AI -> copy to Obsidian
           try {
-            await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath);
+            await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath, obsShadowSet);
             files.push({
               file: relPath,
               action: "copy",
@@ -339,7 +393,7 @@ export class SyncEngine {
 
             if (resolution.decision === "use-ai") {
               try {
-                await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath);
+                await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath, obsShadowSet);
                 files.push({
                   file: relPath,
                   action: "update",
@@ -360,7 +414,7 @@ export class SyncEngine {
               }
             } else if (resolution.decision === "use-obsidian" && mapping.bidirectional) {
               try {
-                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath);
+                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
                 files.push({
                   file: relPath,
                   action: "update",
@@ -400,7 +454,7 @@ export class SyncEngine {
           if (!aiFileMap.has(this.normalizePathKey(relPath))) {
             // File only in Obsidian -> copy to AI
             try {
-              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath);
+              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
               files.push({
                 file: relPath,
                 action: "copy",
@@ -431,7 +485,7 @@ export class SyncEngine {
           if (!aiFile) {
             // File only in Obsidian -> copy to AI
             try {
-              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath);
+              await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
               files.push({
                 file: relPath,
                 action: "copy",
@@ -456,7 +510,7 @@ export class SyncEngine {
 
             if (comparison !== "same" && obsFile.mtime > aiFile.mtime) {
               try {
-                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath);
+                await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
                 files.push({
                   file: relPath,
                   action: "update",
@@ -1032,7 +1086,8 @@ export class SyncEngine {
     sourcePath: string,
     obsDocsPath: string,
     relativePath: string,
-    aiDocsPath?: string
+    aiDocsPath?: string,
+    shadowedRelativePaths?: Set<string>
   ): Promise<void> {
     // Resolve vault path with correct folder casing (e.g. "gtm/" → "GTM/" on macOS)
     const rawTargetPath = normalizePath(path.join(obsDocsPath, relativePath));
@@ -1050,15 +1105,29 @@ export class SyncEngine {
       return;
     }
 
+    // Shared-docsSubdir shadow guard (#3bb939c5): shadowedRelativePaths is computed
+    // ONCE per mapping run by detectShadowedRelativePaths — see its doc comment for
+    // why this needs a content-identical match across a majority of the tree, not a
+    // size check on one file. A hit here means this exact file is a confirmed
+    // duplicate of already-synced content one level up from obsDocsPath.
+    if (shadowedRelativePaths?.has(this.normalizeRelativePath(relativePath))) {
+      console.warn(
+        `EVC Sync: skipped write — "${relativePath}" is a confirmed duplicate of content ` +
+          `already synced one level up from "${obsDocsPath}": ${rawTargetPath}`
+      );
+      return;
+    }
+
+    // Read source file and get its mtime
+    const sourceStats = fs.statSync(sourcePath);
+    const sourceMtime = sourceStats.mtime;
+
     const targetPath = this.resolveVaultPath(rawTargetPath);
 
     // Ensure parent directory exists
     const parentDir = normalizePath(path.dirname(targetPath));
     await this.ensureObsidianFolder(parentDir);
 
-    // Read source file and get its mtime
-    const sourceStats = fs.statSync(sourcePath);
-    const sourceMtime = sourceStats.mtime;
     const content = fs.readFileSync(sourcePath, "utf-8");
 
     // Create backup if enabled
@@ -1092,7 +1161,8 @@ export class SyncEngine {
     sourcePath: string,
     aiDocsPath: string,
     relativePath: string,
-    obsDocsPath?: string
+    obsDocsPath?: string,
+    shadowedRelativePaths?: Set<string>
   ): Promise<void> {
     const targetPath = path.join(aiDocsPath, relativePath);
 
@@ -1109,6 +1179,23 @@ export class SyncEngine {
       return;
     }
 
+    // Shared-docsSubdir shadow guard (#3bb939c5): mirror of the ai-to-obs check in
+    // copyFileToObsidian — see detectShadowedRelativePaths for the full mechanism.
+    if (shadowedRelativePaths?.has(this.normalizeRelativePath(relativePath))) {
+      console.warn(
+        `EVC Sync: skipped write — "${relativePath}" is a confirmed duplicate of content ` +
+          `already synced one level up from "${aiDocsPath}": ${targetPath}`
+      );
+      return;
+    }
+
+    // Read from Obsidian vault using the abstract file path
+    const vaultBasePath = getVaultBasePath(this.app);
+    const vaultPath = sourcePath.replace(vaultBasePath, "").replace(/^[/\\]/, "");
+    const normalizedVaultPath = normalizePath(vaultPath);
+
+    const file = this.app.vault.getAbstractFileByPath(normalizedVaultPath);
+
     // Ensure parent directory exists
     const parentDir = path.dirname(targetPath);
     if (!fs.existsSync(parentDir)) {
@@ -1119,13 +1206,6 @@ export class SyncEngine {
     if (this.settings.createBackups && fs.existsSync(targetPath)) {
       this.createAiBackup(targetPath);
     }
-
-    // Read from Obsidian vault using the abstract file path
-    const vaultBasePath = getVaultBasePath(this.app);
-    const vaultPath = sourcePath.replace(vaultBasePath, "").replace(/^[/\\]/, "");
-    const normalizedVaultPath = normalizePath(vaultPath);
-
-    const file = this.app.vault.getAbstractFileByPath(normalizedVaultPath);
 
     let sourceMtime: Date | null = null;
     if (file instanceof TFile) {
@@ -1340,6 +1420,97 @@ export class SyncEngine {
       }
     }
     return false;
+  }
+
+  /**
+   * Shared-docsSubdir shadow guard (#3bb939c5, live behind #58/1.3.4).
+   *
+   * `docsSubdir` is ONE field, applied identically by both getAiDocsPath() and
+   * getObsidianDocsPath(). That's correct for a freshly-created, symmetric
+   * mapping (aiPath="<repo>", obsidianPath="<vault folder>", docsSubdir="docs"
+   * → both sides gain a matching "/docs" suffix — the plugin's own new-mapping
+   * default, see mapping-modal.ts). It silently breaks for a mapping where one
+   * side's root ALREADY IS the canonical docs folder while docsSubdir only
+   * describes a real subfolder on the OTHER side (e.g. aiPath="<repo>" +
+   * docsSubdir="dev-docs" because the repo's docs live under "dev-docs/",
+   * while obsidianPath="Vault/Product/docs" already points straight at the
+   * canonical folder). The same field then gets wrongly re-applied there too,
+   * computing a destination root of "Vault/Product/docs/dev-docs" — an extra
+   * nested copy of the root's own docsSubdir sitting one level below where the
+   * real content already lives.
+   *
+   * The #58 guard (isSelfNestedRelPath) can't see this: it compares the
+   * RELATIVE PATH's leading segment against the mapping roots' basenames, but
+   * here the offending segment is the DESTINATION ROOT ITSELF, one level
+   * higher than any relativePath that guard ever inspects — confirmed live on
+   * a real vault after 1.3.4 (Local Sync docs/dev-docs/issues/…, mesh task
+   * 3bb939c5): the guard never even looked, because relativePath was
+   * "issues/a.md", not "dev-docs/issues/a.md".
+   *
+   * A per-file, size-only version of this check shipped in an earlier draft of
+   * this fix and was rejected on independent verification: `basename(destRoot)
+   * === docsSubdir` is a near-tautology for the plugin's own default
+   * (docsSubdir="docs"), so it fires on the COMMON, non-buggy mapping shape as
+   * readily as the folded one — and a single coincidental same-path/same-size
+   * match (e.g. two unrelated folders both containing a byte-identical
+   * boilerplate LICENSE.md) would silently drop a genuinely new file. That
+   * failure mode is worse than the bug being fixed: a missed sync is invisible
+   * until someone notices content never arrived, versus a duplicate that's at
+   * least visibly present.
+   *
+   * This version requires CONTENT-identical matches across a MAJORITY of the
+   * files about to be synced (MIN_MATCHES and MIN_RATIO below), computed ONCE
+   * per mapping per direction — the real incident duplicated dozens of files
+   * across the whole tree at once, which a majority-of-tree signal specifically
+   * targets, while a single boilerplate coincidence never crosses the
+   * threshold. Only files that individually content-matched are returned for
+   * skipping — a genuinely new file living alongside real duplicates in a
+   * partially-shadowed mapping still syncs normally.
+   */
+  private async detectShadowedRelativePaths(
+    sourceFiles: FileInfo[],
+    destRoot: string,
+    docsSubdir: string | undefined,
+    readCandidateContent: (candidatePath: string) => Promise<string | undefined>
+  ): Promise<Set<string>> {
+    const none = new Set<string>();
+    if (!docsSubdir || docsSubdir.trim().length === 0 || sourceFiles.length === 0) {
+      return none;
+    }
+    const normalizedRoot = normalizePath(destRoot).replace(/\/$/, "");
+    if (path.basename(normalizedRoot) !== docsSubdir.trim()) {
+      return none;
+    }
+    const parentRoot = path.dirname(normalizedRoot);
+    if (!parentRoot || parentRoot === "." || parentRoot === normalizedRoot) {
+      return none;
+    }
+
+    const matched = new Set<string>();
+    for (const sourceFile of sourceFiles) {
+      const relKey = this.normalizeRelativePath(sourceFile.relativePath);
+      const candidatePath = normalizePath(path.join(parentRoot, relKey));
+      const candidateContent = await readCandidateContent(candidatePath);
+      if (candidateContent === undefined) {
+        continue;
+      }
+      let sourceContent: string;
+      try {
+        sourceContent = fs.readFileSync(sourceFile.absolutePath, "utf-8");
+      } catch {
+        continue;
+      }
+      if (candidateContent === sourceContent) {
+        matched.add(relKey);
+      }
+    }
+
+    const MIN_MATCHES = 2;
+    const MIN_RATIO = 0.5;
+    if (matched.size < MIN_MATCHES || matched.size / sourceFiles.length < MIN_RATIO) {
+      return none;
+    }
+    return matched;
   }
 
   /**
