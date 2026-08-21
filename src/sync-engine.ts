@@ -10,6 +10,12 @@ import {
   type DetectedDeletion,
 } from "./sync-state-manager";
 import { expandHome } from "./path-utils";
+import {
+  detectFoldSignature,
+  detectOverlappingRoots,
+  type MappingDiagnostic,
+  type ResolvedMappingRoots,
+} from "./mapping-diagnostics";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -34,6 +40,52 @@ export interface FileInfo {
 }
 
 /**
+ * Which guard suppressed a write.
+ *
+ * "self-nesting"     — isSelfNestedRelPath: the relative path would have
+ *                      re-entered one of the mapping's own roots.
+ * "shadow-duplicate" — detectShadowedRelativePaths: the file is a confirmed
+ *                      content-identical copy of content already synced one
+ *                      level up from the destination root.
+ */
+export type GuardKind = "self-nesting" | "shadow-duplicate";
+
+/**
+ * A write the guards suppressed, carried out of the sync so the REPORT can name
+ * it (#4dce529d).
+ *
+ * A guard skip is not the same event as "this file is unchanged", but until now
+ * both landed in `filesSkipped` and neither reached the user. That is the trade
+ * this type exists to undo: the 1.3.4/1.3.5 guards correctly stop a self-nested
+ * tree from growing, but where the shadowed tree holds files that exist ONLY
+ * there, stopping the write means those files silently stop syncing. Growth is
+ * visible in a directory listing; silence is not — so the quieter failure is the
+ * one that needs the louder report.
+ *
+ * `root` is the mapping root the guard matched against. It is the actionable
+ * half of the message: the count alone tells a user something is wrong, the root
+ * tells them where to look.
+ */
+export interface GuardSkip {
+  file: string;
+  direction: SyncDirectionType;
+  guard: GuardKind;
+  root: string;
+}
+
+/**
+ * Outcome of an attempted file write.
+ *
+ * Guard-suppressed writes return `written: false` WITH the reason attached —
+ * callers must record a "skip" and propagate the reason, never a "copy". See
+ * copyFileToObsidian's doc comment for the false-"copy succeeded" bug this
+ * shape replaced (#3bb939c5).
+ */
+export type WriteOutcome =
+  | { written: true }
+  | { written: false; guard: GuardKind; root: string };
+
+/**
  * Result of a single file sync operation
  */
 export interface SyncFileResult {
@@ -54,6 +106,14 @@ export interface SyncResult {
   filesCopied: number;
   filesSkipped: number;
   filesDeleted: number;
+  /**
+   * Writes suppressed by a guard this run (#4dce529d). A SUBSET of filesSkipped
+   * — `filesSkipped` keeps its original meaning (every skip, including the
+   * ordinary "unchanged file" case) so existing callers are untouched; this
+   * array separates out the skips that mean "something is misconfigured",
+   * which is the only kind worth interrupting the user about.
+   */
+  guardSkips: GuardSkip[];
   conflicts: ConflictInfo[];
   errors: string[];
   startTime: Date;
@@ -172,6 +232,7 @@ export class SyncEngine {
           filesCopied: 0,
           filesSkipped: 0,
           filesDeleted: 0,
+          guardSkips: [],
           conflicts: [],
           errors: [(error as Error).message],
           startTime: new Date(),
@@ -192,6 +253,7 @@ export class SyncEngine {
   async syncMapping(mapping: ProjectMapping): Promise<SyncResult> {
     const startTime = new Date();
     const files: SyncFileResult[] = [];
+    const guardSkips: GuardSkip[] = [];
     const conflicts: ConflictInfo[] = [];
     const errors: string[] = [];
     let filesCopied = 0;
@@ -336,8 +398,8 @@ export class SyncEngine {
         if (!obsFile) {
           // File only in AI -> copy to Obsidian
           try {
-            const written = await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath, obsShadowSet);
-            if (written) {
+            const outcome = await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath, obsShadowSet);
+            if (outcome.written) {
               files.push({
                 file: relPath,
                 action: "copy",
@@ -346,12 +408,18 @@ export class SyncEngine {
               });
               filesCopied++;
             } else {
+              guardSkips.push({
+                file: relPath,
+                direction: "ai-to-obs",
+                guard: outcome.guard,
+                root: outcome.root,
+              });
               files.push({
                 file: relPath,
                 action: "skip",
                 direction: "ai-to-obs",
                 success: true,
-                error: "guard-skipped (self-nesting or shadow duplicate)",
+                error: `guard-skipped (${outcome.guard}, root "${outcome.root}")`,
               });
               filesSkipped++;
             }
@@ -404,8 +472,8 @@ export class SyncEngine {
 
             if (resolution.decision === "use-ai") {
               try {
-                const written = await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath, obsShadowSet);
-                if (written) {
+                const outcome = await this.copyFileToObsidian(aiFile.absolutePath, obsDocsPath, relPath, aiDocsPath, obsShadowSet);
+                if (outcome.written) {
                   files.push({
                     file: relPath,
                     action: "update",
@@ -414,12 +482,18 @@ export class SyncEngine {
                   });
                   filesCopied++;
                 } else {
+                  guardSkips.push({
+                    file: relPath,
+                    direction: "ai-to-obs",
+                    guard: outcome.guard,
+                    root: outcome.root,
+                  });
                   files.push({
                     file: relPath,
                     action: "skip",
                     direction: "ai-to-obs",
                     success: true,
-                    error: "guard-skipped (self-nesting or shadow duplicate)",
+                    error: `guard-skipped (${outcome.guard}, root "${outcome.root}")`,
                   });
                   filesSkipped++;
                 }
@@ -436,8 +510,8 @@ export class SyncEngine {
               }
             } else if (resolution.decision === "use-obsidian" && mapping.bidirectional) {
               try {
-                const written = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
-                if (written) {
+                const outcome = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
+                if (outcome.written) {
                   files.push({
                     file: relPath,
                     action: "update",
@@ -446,12 +520,18 @@ export class SyncEngine {
                   });
                   filesCopied++;
                 } else {
+                  guardSkips.push({
+                    file: relPath,
+                    direction: "obs-to-ai",
+                    guard: outcome.guard,
+                    root: outcome.root,
+                  });
                   files.push({
                     file: relPath,
                     action: "skip",
                     direction: "obs-to-ai",
                     success: true,
-                    error: "guard-skipped (self-nesting or shadow duplicate)",
+                    error: `guard-skipped (${outcome.guard}, root "${outcome.root}")`,
                   });
                   filesSkipped++;
                 }
@@ -487,8 +567,8 @@ export class SyncEngine {
           if (!aiFileMap.has(this.normalizePathKey(relPath))) {
             // File only in Obsidian -> copy to AI
             try {
-              const written = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
-              if (written) {
+              const outcome = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
+              if (outcome.written) {
                 files.push({
                   file: relPath,
                   action: "copy",
@@ -497,12 +577,18 @@ export class SyncEngine {
                 });
                 filesCopied++;
               } else {
+                guardSkips.push({
+                  file: relPath,
+                  direction: "obs-to-ai",
+                  guard: outcome.guard,
+                  root: outcome.root,
+                });
                 files.push({
                   file: relPath,
                   action: "skip",
                   direction: "obs-to-ai",
                   success: true,
-                  error: "guard-skipped (self-nesting or shadow duplicate)",
+                  error: `guard-skipped (${outcome.guard}, root "${outcome.root}")`,
                 });
                 filesSkipped++;
               }
@@ -529,8 +615,8 @@ export class SyncEngine {
           if (!aiFile) {
             // File only in Obsidian -> copy to AI
             try {
-              const written = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
-              if (written) {
+              const outcome = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
+              if (outcome.written) {
                 files.push({
                   file: relPath,
                   action: "copy",
@@ -539,12 +625,18 @@ export class SyncEngine {
                 });
                 filesCopied++;
               } else {
+                guardSkips.push({
+                  file: relPath,
+                  direction: "obs-to-ai",
+                  guard: outcome.guard,
+                  root: outcome.root,
+                });
                 files.push({
                   file: relPath,
                   action: "skip",
                   direction: "obs-to-ai",
                   success: true,
-                  error: "guard-skipped (self-nesting or shadow duplicate)",
+                  error: `guard-skipped (${outcome.guard}, root "${outcome.root}")`,
                 });
                 filesSkipped++;
               }
@@ -565,8 +657,8 @@ export class SyncEngine {
 
             if (comparison !== "same" && obsFile.mtime > aiFile.mtime) {
               try {
-                const written = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
-                if (written) {
+                const outcome = await this.copyFileToAi(obsFile.absolutePath, aiDocsPath, relPath, obsDocsPath, aiShadowSet);
+                if (outcome.written) {
                   files.push({
                     file: relPath,
                     action: "update",
@@ -575,12 +667,18 @@ export class SyncEngine {
                   });
                   filesCopied++;
                 } else {
+                  guardSkips.push({
+                    file: relPath,
+                    direction: "obs-to-ai",
+                    guard: outcome.guard,
+                    root: outcome.root,
+                  });
                   files.push({
                     file: relPath,
                     action: "skip",
                     direction: "obs-to-ai",
                     success: true,
-                    error: "guard-skipped (self-nesting or shadow duplicate)",
+                    error: `guard-skipped (${outcome.guard}, root "${outcome.root}")`,
                   });
                   filesSkipped++;
                 }
@@ -617,6 +715,7 @@ export class SyncEngine {
         filesCopied,
         filesSkipped,
         filesDeleted,
+        guardSkips,
         conflicts,
         errors,
         startTime,
@@ -633,6 +732,7 @@ export class SyncEngine {
         filesCopied,
         filesSkipped,
         filesDeleted,
+        guardSkips,
         conflicts,
         errors: [...errors, (error as Error).message],
         startTime,
@@ -1165,7 +1265,7 @@ export class SyncEngine {
     relativePath: string,
     aiDocsPath?: string,
     shadowedRelativePaths?: Set<string>
-  ): Promise<boolean> {
+  ): Promise<WriteOutcome> {
     // Resolve vault path with correct folder casing (e.g. "gtm/" → "GTM/" on macOS)
     const rawTargetPath = normalizePath(path.join(obsDocsPath, relativePath));
 
@@ -1175,11 +1275,12 @@ export class SyncEngine {
     // docsSubdir/aiPath-fold class of self-nesting.
     const obsRootBasename = path.basename(normalizePath(obsDocsPath));
     const aiRootBasename = aiDocsPath ? path.basename(aiDocsPath.replace(/[/\\]+$/, "")) : undefined;
-    if (this.isSelfNestedRelPath(relativePath, [obsRootBasename, aiRootBasename])) {
+    const nestedRoot = this.matchSelfNestedRoot(relativePath, [obsRootBasename, aiRootBasename]);
+    if (nestedRoot !== undefined) {
       console.warn(
         `EVC Sync: skipped write to avoid recursive nesting: ${rawTargetPath}`
       );
-      return false;
+      return { written: false, guard: "self-nesting", root: nestedRoot };
     }
 
     // Shared-docsSubdir shadow guard (#3bb939c5): shadowedRelativePaths is computed
@@ -1192,7 +1293,7 @@ export class SyncEngine {
         `EVC Sync: skipped write — "${relativePath}" is a confirmed duplicate of content ` +
           `already synced one level up from "${obsDocsPath}": ${rawTargetPath}`
       );
-      return false;
+      return { written: false, guard: "shadow-duplicate", root: normalizePath(obsDocsPath) };
     }
 
     // Read source file and get its mtime
@@ -1229,7 +1330,7 @@ export class SyncEngine {
     if (fs.existsSync(absoluteTargetPath)) {
       fs.utimesSync(absoluteTargetPath, sourceMtime, sourceMtime);
     }
-    return true;
+    return { written: true };
   }
 
   /**
@@ -1242,7 +1343,7 @@ export class SyncEngine {
     relativePath: string,
     obsDocsPath?: string,
     shadowedRelativePaths?: Set<string>
-  ): Promise<boolean> {
+  ): Promise<WriteOutcome> {
     const targetPath = path.join(aiDocsPath, relativePath);
 
     // Self-nesting guard (#14, widened #9d86c756): checked against BOTH the
@@ -1251,11 +1352,12 @@ export class SyncEngine {
     // docsSubdir/aiPath-fold class of self-nesting.
     const aiRootBasename = path.basename(aiDocsPath.replace(/[/\\]+$/, ""));
     const obsRootBasename = obsDocsPath ? path.basename(normalizePath(obsDocsPath)) : undefined;
-    if (this.isSelfNestedRelPath(relativePath, [aiRootBasename, obsRootBasename])) {
+    const nestedRoot = this.matchSelfNestedRoot(relativePath, [aiRootBasename, obsRootBasename]);
+    if (nestedRoot !== undefined) {
       console.warn(
         `EVC Sync: skipped write to avoid recursive nesting: ${targetPath}`
       );
-      return false;
+      return { written: false, guard: "self-nesting", root: nestedRoot };
     }
 
     // Shared-docsSubdir shadow guard (#3bb939c5): mirror of the ai-to-obs check in
@@ -1265,7 +1367,7 @@ export class SyncEngine {
         `EVC Sync: skipped write — "${relativePath}" is a confirmed duplicate of content ` +
           `already synced one level up from "${aiDocsPath}": ${targetPath}`
       );
-      return false;
+      return { written: false, guard: "shadow-duplicate", root: aiDocsPath.replace(/[/\\]+$/, "") };
     }
 
     // Read from Obsidian vault using the abstract file path
@@ -1303,7 +1405,7 @@ export class SyncEngine {
     if (sourceMtime) {
       fs.utimesSync(targetPath, sourceMtime, sourceMtime);
     }
-    return true;
+    return { written: true };
   }
 
   /**
@@ -1395,6 +1497,53 @@ export class SyncEngine {
 
     // Create folder recursively
     await this.app.vault.createFolder(normalizedPath);
+  }
+
+  /**
+   * Resolved roots of every enabled mapping, as the diagnostics see them.
+   *
+   * Exposed (rather than folded into runMappingDiagnostics) because the RESOLVED
+   * roots are the thing worth showing a user: the settings fields say
+   * `aiPath` + `docsSubdir`, but what the engine actually scans is their join,
+   * and every incident in this class came from the gap between those two.
+   */
+  getResolvedMappingRoots(): ResolvedMappingRoots[] {
+    return this.settings.mappings
+      .filter((m) => m.syncEnabled)
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        aiRoot: this.getAiDocsPath(m),
+        obsRoot: this.getObsidianDocsPath(m),
+        docsSubdir: m.docsSubdir ?? "",
+      }));
+  }
+
+  /**
+   * Run the config-shape diagnostics over the current mappings (#4dce529d).
+   *
+   * Read-only: it inspects folder NAMES only, never file content, and changes
+   * nothing. Safe to call on load and after any settings change.
+   */
+  runMappingDiagnostics(): MappingDiagnostic[] {
+    const roots = this.getResolvedMappingRoots();
+    const diagnostics: MappingDiagnostic[] = [...detectOverlappingRoots(roots)];
+
+    for (const root of roots) {
+      const folder = this.app.vault.getAbstractFileByPath(root.obsRoot);
+      if (!(folder instanceof TFolder)) {
+        continue;
+      }
+      const childFolderNames = folder.children
+        .filter((c): c is TFolder => c instanceof TFolder)
+        .map((c) => c.name);
+      const fold = detectFoldSignature(root, childFolderNames);
+      if (fold) {
+        diagnostics.push(fold);
+      }
+    }
+
+    return diagnostics;
   }
 
   /**
@@ -1490,16 +1639,33 @@ export class SyncEngine {
    * copy runs, so it is caught either way.
    */
   private isSelfNestedRelPath(relativePath: string, rootBasenames: Array<string | undefined>): boolean {
+    return this.matchSelfNestedRoot(relativePath, rootBasenames) !== undefined;
+  }
+
+  /**
+   * Same test as isSelfNestedRelPath, but returns WHICH root basename matched
+   * instead of a bare boolean — so a suppressed write can name the root in the
+   * sync report rather than only in a console.warn nobody reads (#4dce529d).
+   *
+   * Returns `undefined` when no root matches. `undefined` (not `null`) so the
+   * caller's `!== undefined` check stays honest for a root that is the empty
+   * string — falsy roots are skipped on entry, but an empty-string match would
+   * otherwise read as "no match" at the call site.
+   */
+  private matchSelfNestedRoot(
+    relativePath: string,
+    rootBasenames: Array<string | undefined>
+  ): string | undefined {
     const relFirstSegment = this.normalizeRelativePath(relativePath).split("/")[0];
     for (const rootBasename of rootBasenames) {
       if (!rootBasename) {
         continue;
       }
       if (relFirstSegment === rootBasename || this.hasRepeatedSegment(`${rootBasename}/${relativePath}`)) {
-        return true;
+        return rootBasename;
       }
     }
-    return false;
+    return undefined;
   }
 
   /**

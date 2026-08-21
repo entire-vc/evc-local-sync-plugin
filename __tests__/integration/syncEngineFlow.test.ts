@@ -581,3 +581,245 @@ describe("Integration: path-utils expandHome", () => {
 		expect(expandHome("relative/path")).toBe("relative/path");
 	});
 });
+
+describe("Integration: guard skips are reported, not swallowed (#4dce529d)", () => {
+	// The 1.3.4/1.3.5 guards correctly stop a self-nested tree from growing. But
+	// stopping the WRITE is not the same as fixing the MAPPING: where the shadowed
+	// tree holds files that exist ONLY there, the guard silently converts
+	// "duplicating" into "not syncing", and the second failure is much harder to
+	// notice — a duplicate shows up in a folder listing, a file that quietly
+	// stopped syncing looks exactly like a file nobody edited. These tests pin the
+	// reporting that makes the trade visible.
+	let aiProjectRoot: string;
+	let vaultDir: string;
+	let engine: SyncEngine;
+	let vault: ReturnType<typeof makeVaultMock>;
+	let aiDocsPath: string;
+
+	beforeEach(async () => {
+		aiProjectRoot = makeTempDir();
+		vaultDir = makeTempDir();
+		vault = makeVaultMock(vaultDir);
+		aiDocsPath = path.join(aiProjectRoot, "dev-docs");
+
+		const app = { vault, _vaultBasePath: vaultDir } as unknown as import("obsidian").App;
+		engine = new SyncEngine(app, makeSettings({ mappings: [] }), "/tmp/evc-ls-plugin");
+		await engine.init();
+	});
+
+	afterEach(() => {
+		rmDir(aiProjectRoot);
+		rmDir(vaultDir);
+	});
+
+	test("a self-nesting skip names its guard and the root that matched", async () => {
+		writeFile(aiDocsPath, "readme.md", "# Docs");
+		writeFile(aiDocsPath, "dev-docs/a.md", "# Duplicate");
+
+		const mapping = makeMapping(aiDocsPath, "docs", {
+			id: "map-guardreport",
+			name: "TR docs (folded)",
+			docsSubdir: "",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		const result = await engine.syncMapping(mapping);
+
+		expect(result.guardSkips.length).toBeGreaterThanOrEqual(1);
+		const nested = result.guardSkips.find((s) => s.file === "dev-docs/a.md");
+		expect(nested).toBeDefined();
+		expect(nested?.guard).toBe("self-nesting");
+		// The root is the actionable half of the report: the count says something
+		// is wrong, the root says where to look. "dev-docs" is the AI root's own
+		// basename — the segment the write would have re-entered.
+		expect(nested?.root).toBe("dev-docs");
+
+		// The legitimate file is unaffected — a guard report must not imply the
+		// whole mapping stopped working.
+		expect(fileExists(vaultDir, "docs/readme.md")).toBe(true);
+		expect(result.guardSkips.some((s) => s.file === "readme.md")).toBe(false);
+	});
+
+	test("a shadow-duplicate skip is labelled as such, not as self-nesting", async () => {
+		// The two guards mean different things and are fixed differently, so the
+		// report has to tell them apart — collapsing both into "skipped" is the
+		// state this change exists to move away from.
+		writeFile(aiProjectRoot, "dev-docs/a.md", "content A");
+		writeFile(aiProjectRoot, "dev-docs/b.md", "content B");
+		writeFile(vaultDir, "Product/a.md", "content A");
+		writeFile(vaultDir, "Product/b.md", "content B");
+
+		const mapping = makeMapping(aiProjectRoot, "Product", {
+			id: "map-shadowreport",
+			name: "Product docs (shadowed)",
+			docsSubdir: "dev-docs",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		const result = await engine.syncMapping(mapping);
+
+		const shadow = result.guardSkips.filter((s) => s.guard === "shadow-duplicate");
+		expect(shadow.length).toBeGreaterThanOrEqual(1);
+		expect(shadow.every((s) => s.root.length > 0)).toBe(true);
+		expect(result.guardSkips.some((s) => s.guard === "self-nesting")).toBe(false);
+	});
+
+	test("the per-file log entry carries the same reason as the report", async () => {
+		// sync-log.json is the only persisted record of what happened. If the
+		// report and the log disagree about why a file was skipped, whoever reads
+		// the log later cannot act on it.
+		writeFile(aiDocsPath, "dev-docs/a.md", "# Duplicate");
+
+		const mapping = makeMapping(aiDocsPath, "docs", {
+			id: "map-guardlog",
+			name: "TR docs (folded)",
+			docsSubdir: "",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		const result = await engine.syncMapping(mapping);
+		const logged = result.files.find((f) => f.file === "dev-docs/a.md");
+
+		expect(logged?.action).toBe("skip");
+		expect(logged?.error).toContain("self-nesting");
+		expect(logged?.error).toContain("dev-docs");
+	});
+
+	test("negative control: a clean mapping reports no guard skips at all", async () => {
+		// If guardSkips were ever non-empty on a healthy sync, the notice would
+		// fire on every run and be trained away — the exact fate of the
+		// console.warn this replaces.
+		writeFile(aiDocsPath, "readme.md", "# Docs");
+		writeFile(aiDocsPath, "notes/api.md", "## API");
+
+		const mapping = makeMapping(aiDocsPath, "docs", {
+			id: "map-guardclean",
+			name: "TR docs (clean)",
+			docsSubdir: "",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+
+		const result = await engine.syncMapping(mapping);
+
+		expect(result.guardSkips).toEqual([]);
+		expect(result.filesCopied).toBeGreaterThanOrEqual(2);
+	});
+});
+
+describe("Integration: runMappingDiagnostics over a real vault tree (#4dce529d)", () => {
+	let aiProjectRoot: string;
+	let vaultDir: string;
+	let vault: ReturnType<typeof makeVaultMock>;
+
+	beforeEach(() => {
+		aiProjectRoot = makeTempDir();
+		vaultDir = makeTempDir();
+		vault = makeVaultMock(vaultDir);
+	});
+
+	afterEach(() => {
+		rmDir(aiProjectRoot);
+		rmDir(vaultDir);
+	});
+
+	function engineWith(mappings: ProjectMapping[]): SyncEngine {
+		const app = { vault, _vaultBasePath: vaultDir } as unknown as import("obsidian").App;
+		return new SyncEngine(app, makeSettings({ mappings }), "/tmp/evc-ls-plugin");
+	}
+
+	test("detects the folded shape against a real folder tree", async () => {
+		// Vault side carries the residue of the fold: the previous root is now a
+		// subfolder named after the AI root's last segment.
+		writeFile(vaultDir, "PPE TenderMate/docs/REQUIREMENTS.md", "# Reqs");
+		writeFile(vaultDir, "PPE TenderMate/Overview.md", "# Overview");
+		fs.mkdirSync(path.join(aiProjectRoot, "docs"), { recursive: true });
+
+		const engine = engineWith([
+			makeMapping(path.join(aiProjectRoot, "docs"), "PPE TenderMate", {
+				id: "map-tm",
+				name: "TenderMate",
+				docsSubdir: "",
+			}),
+		]);
+
+		const found = engine.runMappingDiagnostics();
+		const fold = found.filter((d) => d.kind === "folded-docs-subdir");
+		expect(fold).toHaveLength(1);
+		expect(fold[0].mappingName).toBe("TenderMate");
+	});
+
+	test("detects overlapping vault roots from the resolved config alone", async () => {
+		// The acceptance criterion asks for this to be checked "against the config,
+		// not by eye" — no folder needs to exist for an overlap to be real.
+		const engine = engineWith([
+			makeMapping(path.join(aiProjectRoot, "tendermate"), "PPE TenderMate", {
+				id: "map-a",
+				name: "TenderMate",
+				docsSubdir: "",
+			}),
+			makeMapping(path.join(aiProjectRoot, "parsers"), "PPE TenderMate/Parsers", {
+				id: "map-b",
+				name: "TenderMate Parsers",
+				docsSubdir: "",
+			}),
+		]);
+
+		const overlaps = engine.runMappingDiagnostics().filter((d) => d.kind === "overlapping-obs-root");
+		expect(overlaps).toHaveLength(1);
+		expect(overlaps[0].mappingName).toBe("TenderMate Parsers");
+	});
+
+	test("resolved roots reflect docsSubdir, not the raw settings fields", async () => {
+		// Every incident in this class came from the gap between what the settings
+		// say and what the engine actually scans, so the diagnostics must read the
+		// joined path — asserting that here keeps a future refactor honest.
+		const engine = engineWith([
+			makeMapping(path.join(aiProjectRoot, "repo"), "Vault/Product", {
+				id: "map-resolved",
+				name: "Resolved",
+				docsSubdir: "dev-docs",
+			}),
+		]);
+
+		const [resolved] = engine.getResolvedMappingRoots();
+		expect(resolved.aiRoot).toBe(path.join(aiProjectRoot, "repo", "dev-docs"));
+		expect(resolved.obsRoot).toBe("Vault/Product/dev-docs");
+	});
+
+	test("negative control: a healthy single mapping produces no diagnostics", async () => {
+		writeFile(vaultDir, "Product/readme.md", "# Readme");
+		fs.mkdirSync(path.join(aiProjectRoot, "repo", "docs"), { recursive: true });
+
+		const engine = engineWith([
+			makeMapping(path.join(aiProjectRoot, "repo"), "Product", {
+				id: "map-healthy",
+				name: "Healthy",
+				docsSubdir: "docs",
+			}),
+		]);
+
+		expect(engine.runMappingDiagnostics()).toEqual([]);
+	});
+
+	test("disabled mappings are excluded — a mapping that never runs cannot duplicate anything", async () => {
+		const engine = engineWith([
+			makeMapping(path.join(aiProjectRoot, "a"), "PPE TenderMate", {
+				id: "map-on",
+				name: "On",
+				docsSubdir: "",
+			}),
+			makeMapping(path.join(aiProjectRoot, "b"), "PPE TenderMate/Parsers", {
+				id: "map-off",
+				name: "Off",
+				docsSubdir: "",
+				syncEnabled: false,
+			}),
+		]);
+
+		expect(engine.runMappingDiagnostics()).toEqual([]);
+	});
+});
