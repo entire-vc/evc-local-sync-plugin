@@ -16,7 +16,7 @@ import {
   EVCLocalSyncSettingTab,
 } from "./settings";
 import { MappingManager } from "./mapping-manager";
-import { SyncEngine } from "./sync-engine";
+import { SyncEngine, type SyncResult, type GuardSkip } from "./sync-engine";
 import { SyncLogger, DEFAULT_LOGGER_CONFIG } from "./logger";
 import { FileWatcher, FileChangeEvent } from "./file-watcher";
 import { DryRunModal } from "./ui/modals/dry-run-modal";
@@ -104,6 +104,15 @@ export default class EVCLocalSyncPlugin extends Plugin {
       this.startScheduledSync();
     }
 
+    // Config-shape diagnostics (#4dce529d). Deferred behind the same delay the
+    // startup sync uses: the vault tree is not fully populated the instant onload
+    // runs, and the fold check reads folder children — running it too early would
+    // report "no subfolder" on a vault that has one, which is worse than not
+    // running it at all.
+    window.setTimeout(() => {
+      this.reportMappingDiagnostics();
+    }, 2500);
+
     // Sync on startup if enabled
     if (this.settings.syncOnStartup && this.settings.syncMode !== "manual") {
       // Delay to allow Obsidian to fully load
@@ -111,6 +120,43 @@ export default class EVCLocalSyncPlugin extends Plugin {
         void this.syncAllProjects();
       }, 2000);
     }
+  }
+
+  /**
+   * Surface config-shape diagnostics (#4dce529d).
+   *
+   * These describe a MAPPING that is shaped wrong, not a file that failed — so
+   * unlike the guard-skip report they fire whether or not a sync has run. Both
+   * incidents in this class (dev-docs #9d86c756, PPE TenderMate #4dce529d) were
+   * live in the config for months while every individual sync looked successful.
+   *
+   * Findings are warnings, not errors: each can legitimately be intentional, so
+   * this tells the user where to look and never changes anything itself.
+   */
+  private reportMappingDiagnostics(): void {
+    let diagnostics;
+    try {
+      diagnostics = this.syncEngine.runMappingDiagnostics();
+    } catch (error) {
+      // A diagnostic must never take the plugin down with it.
+      console.error("EVC Sync: mapping diagnostics failed", error);
+      return;
+    }
+
+    if (diagnostics.length === 0) {
+      return;
+    }
+
+    for (const d of diagnostics) {
+      console.warn(`EVC Sync [${d.kind}]: ${d.message}`);
+    }
+
+    const first = diagnostics[0];
+    const rest =
+      diagnostics.length > 1
+        ? ` (+${diagnostics.length - 1} more — see the developer console)`
+        : "";
+    new Notice(`EVC Sync: ${first.message}${rest}`, 20000);
   }
 
   onunload(): void {
@@ -237,6 +283,61 @@ export default class EVCLocalSyncPlugin extends Plugin {
   }
 
   /**
+   * Surface guard-suppressed writes to the user (#4dce529d).
+   *
+   * The self-nesting (#58) and shadow-duplicate (#62) guards stop a misconfigured
+   * mapping from growing a docs/docs/docs tree — but stopping the WRITE is not the
+   * same as fixing the MAPPING. Where the shadowed tree holds files that exist only
+   * there, the guard converts "silently duplicating" into "silently not syncing",
+   * and the second failure is the harder one to notice: a duplicate shows up in a
+   * folder listing, a file that stopped syncing looks exactly like a file nobody
+   * edited. Before this, the only trace was a console.warn.
+   *
+   * Deliberately a SEPARATE notice from the success one, and longer-lived: a guard
+   * skip means something is misconfigured and needs a human, so it must not be
+   * summarised away next to "synced 12 files". Roots are de-duplicated because one
+   * bad mapping produces one root and hundreds of skips — the count is the alarm,
+   * the root is the address.
+   */
+  private reportGuardSkips(results: SyncResult[]): void {
+    const skips: GuardSkip[] = results.flatMap((r) => r.guardSkips);
+    if (skips.length === 0) {
+      return;
+    }
+
+    for (const skip of skips) {
+      console.warn(
+        `EVC Sync: not synced (${skip.guard}, root "${skip.root}"): ${skip.file}`
+      );
+    }
+
+    const describe = (kind: GuardSkip["guard"], count: number, roots: string[]): string => {
+      const rootList = roots.map((r) => `"${r}"`).join(", ");
+      return kind === "self-nesting"
+        ? `${count} file(s) would nest inside a mapping's own folder (${rootList})`
+        : `${count} file(s) duplicate content already synced one level above (${rootList})`;
+    };
+
+    const parts: string[] = [];
+    for (const kind of ["self-nesting", "shadow-duplicate"] as const) {
+      const ofKind = skips.filter((s) => s.guard === kind);
+      if (ofKind.length === 0) {
+        continue;
+      }
+      const roots = [...new Set(ofKind.map((s) => s.root))].sort();
+      parts.push(describe(kind, ofKind.length, roots));
+    }
+
+    this.statusBar?.setStatus("error", `${skips.length} not synced`);
+    new Notice(
+      `EVC Sync: ${skips.length} file(s) were NOT synced. ` +
+        `${parts.join("; ")}. ` +
+        `These files are being skipped, not merged — check the mapping's folder settings.`,
+      15000
+    );
+  }
+
+  /**
    * Sync all enabled project mappings (FR-021)
    */
   async syncAllProjects(): Promise<void> {
@@ -268,6 +369,10 @@ export default class EVCLocalSyncPlugin extends Plugin {
           });
         }
       }
+
+      // Guard-suppressed writes get their own notice, BEFORE the success one, so
+      // "12 synced" never stands in for "…and 40 silently didn't" (#4dce529d).
+      this.reportGuardSkips(results);
 
       // Calculate totals
       const successCount = results.filter((r) => r.success).length;
@@ -343,6 +448,8 @@ export default class EVCLocalSyncPlugin extends Plugin {
           error: fileResult.error,
         });
       }
+
+      this.reportGuardSkips([result]);
 
       // Show appropriate notification (FR-024)
       if (result.success) {
@@ -465,6 +572,11 @@ export default class EVCLocalSyncPlugin extends Plugin {
             error: fileResult.error,
           });
         }
+
+        // Guard skips are reported even when auto-sync notifications are off:
+        // that setting suppresses routine "synced N files" chatter, and a file
+        // that stopped syncing is not routine (#4dce529d).
+        this.reportGuardSkips([result]);
 
         // Show notification only if enabled and files were actually synced
         if (result.filesCopied > 0 && this.settings.showAutoSyncNotifications) {
