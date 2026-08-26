@@ -1,0 +1,193 @@
+# CI for the GitLab canon (git.entire.host/entire-vc/evc-local-sync-plugin).
+#
+# ## Why this file exists
+#
+# Development moved from GitHub to GitLab on 2026-08-23 (§0z). The checks that
+# guarded merges here — type-check, Jest, ESLint, build smoke, manifest version
+# sync, Hold gate — live in `.github/workflows/` and are executed by GitHub
+# Actions. They still run, on a repository nobody merges into any more. Until
+# this file existed every merge request on the canon landed on `main` having
+# been checked by nothing: no pipeline, no required check. Not a bypassed gate
+# — an absent one.
+#
+# Modelled on `entire-vc/evc-mesh:.gitlab-ci.yml`, the first canon repo to get
+# a pipeline.
+#
+# ## Honest scope — what is NOT here
+#
+# `.github/workflows/ci.yml` carries one more thing than this file does, and it
+# is named rather than implied:
+#
+#   * **manifest monotonicity guard** — "version must be strictly greater than
+#     the latest published release". It reads `gh api repos/.../releases/latest`,
+#     and plugin releases genuinely still live on GitHub (§0z p.5: public repos
+#     keep releases, tags, assets and issues there). Porting it would need a
+#     GitHub token as a CI variable; setting project CI variables needs
+#     Maintainer and every agent account on this group is Developer(30).
+#     `GET /projects/7/variables` answers 403 under this token, so this file
+#     cannot even establish whether such a variable already exists. The
+#     LOCAL half of that check — package.json / manifest.json / versions.json
+#     must agree — is portable and IS ported below.
+#
+#   * `.github/workflows/release.yml` — release publication, still GitHub's job
+#     by the same rule. Deliberately not mirrored.
+#
+# The `CI_MODE` REPORT/ENFORCE burn-in switch from the GitHub workflow is not
+# reproduced: that repo is already `CI_MODE=ENFORCE`, so every job here is
+# simply blocking. A knob whose only reachable setting is "on" is a knob that
+# lies about being adjustable.
+#
+# ## The half that is not in this file
+#
+# A pipeline is a display until `only_allow_merge_if_pipeline_succeeds` is true
+# on the project — until then GitLab merges over a red run via the web button
+# or a bare `glab mr merge`. That setting needs Maintainer; the sole holder of
+# 40+ on this group is `pavel`. Tracked separately (`#11421131`).
+
+workflow:
+  rules:
+    # MR pipelines are the ones that matter — they are what a merge consults,
+    # and the only context where $CI_MERGE_REQUEST_LABELS exists at all.
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # Never run a branch pipeline for a branch that already has an open MR:
+    # GitLab's classic duplicate-pipeline trap, and it doubles load on the one
+    # shared runner this fleet has.
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+stages: [gate, check, build]
+
+variables:
+  # npm's cache defaults to $HOME/.npm, which is outside $CI_PROJECT_DIR and so
+  # cannot be carried by `cache:` — point it inside the project dir or the
+  # cache block below silently caches an empty directory.
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+
+default:
+  tags: [docker]
+  interruptible: true
+  image: node:20-alpine   # matches node-version "20" in .github/workflows/ci.yml
+  cache:
+    key:
+      files: [package-lock.json]
+    paths: [.npm/]
+
+# ── gate ────────────────────────────────────────────────────────────────────
+# Makes the `hold` label a gate here too. On GitHub this is a required status
+# check (.github/workflows/hold-gate.yml); `~/bin/glab-merge` reads the same
+# label list, but a wrapper is a request, not a wall — the web button and a
+# bare `glab mr merge` never ask it.
+#
+# The label list is READ FROM `.github/hold-labels.txt`, the file already in
+# this repository, rather than copied into this one. A second copy is a second
+# thing to drift, and the fleet already paid for that once: the CI copy on
+# evc-mesh drifted from the wrapper list within a day of being written.
+hold-gate:
+  stage: gate
+  image: alpine:latest
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - |
+      set -eu
+      LABELS_FILE=.github/hold-labels.txt
+      # Fail closed on every unknown. "I could not check" must never read the
+      # same as "I checked and it is clean" — that equivalence is the defect
+      # this whole gate family exists to kill.
+      test -f "$LABELS_FILE" || { echo "REFUSING: $LABELS_FILE missing — cannot know what 'held' means"; exit 1; }
+      HOLD=$(grep -vE '^\s*(#|$)' "$LABELS_FILE" | tr 'A-Z' 'a-z' | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -c . || true)
+      test "$HOLD" -gt 0 || { echo "REFUSING: $LABELS_FILE parsed to zero labels — a gate that knows no hold label passes everything"; exit 1; }
+      echo "hold labels known: $HOLD"
+      echo "labels on this merge request: '${CI_MERGE_REQUEST_LABELS:-}'"
+      FOUND=""
+      OLDIFS=$IFS; IFS=','
+      for L in ${CI_MERGE_REQUEST_LABELS:-}; do
+        L=$(printf '%s' "$L" | tr 'A-Z' 'a-z' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        [ -n "$L" ] || continue
+        if grep -vE '^\s*(#|$)' "$LABELS_FILE" | tr 'A-Z' 'a-z' | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -qxF "$L"; then
+          FOUND="$FOUND $L"
+        fi
+      done
+      IFS=$OLDIFS
+      if [ -n "$FOUND" ]; then
+        echo "REFUSING to let this merge request through: it carries a hold label —$FOUND"
+        echo "Remove the label when the work is ready; this job re-runs on the next pipeline."
+        exit 1
+      fi
+      echo "no hold label present ✓"
+
+# ── check ───────────────────────────────────────────────────────────────────
+.node_job: &node_job
+  stage: check
+  timeout: 15m
+  before_script:
+    - npm ci
+
+type-check:
+  <<: *node_job
+  script:
+    - npx tsc --noEmit --skipLibCheck
+
+lint:
+  <<: *node_job
+  script:
+    # `npm run lint`, not a hand-written eslint invocation: the package script
+    # is `eslint src/**/*.ts`, and passing that pattern quoted vs unquoted
+    # selects different files (shell glob vs eslint's own globbing). Running
+    # the script is the only way to lint exactly what the repo means by lint.
+    - npm run lint
+
+test:
+  <<: *node_job
+  script:
+    - npx jest --coverage --forceExit --passWithNoTests
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    when: always
+    paths: [coverage/]
+    expire_in: 1 week
+
+manifest-check:
+  stage: check
+  timeout: 5m
+  cache: {}          # reads three JSON files; npm deps are not involved
+  script:
+    - |
+      set -eu
+      PKG_VER=$(node -p "require('./package.json').version")
+      MFT_VER=$(node -p "require('./manifest.json').version")
+      MFT_MIN=$(node -p "require('./manifest.json').minAppVersion")
+      echo "package.json:   $PKG_VER"
+      echo "manifest.json:  $MFT_VER  (minAppVersion: $MFT_MIN)"
+      if [ "$PKG_VER" != "$MFT_VER" ]; then
+        echo "REFUSING: manifest.json version ($MFT_VER) != package.json version ($PKG_VER). Fix manifest.json."
+        exit 1
+      fi
+      if ! grep -q "\"$MFT_VER\"" versions.json; then
+        echo "REFUSING: versions.json has no entry for $MFT_VER. Add it before releasing."
+        exit 1
+      fi
+      echo "OK: manifest.json, package.json, versions.json all agree on $PKG_VER ✓"
+      echo
+      echo "NOT CHECKED HERE: that $PKG_VER is strictly greater than the latest"
+      echo "published GitHub release. That guard needs a GitHub token this"
+      echo "pipeline does not have — see the header of this file."
+
+# ── build ───────────────────────────────────────────────────────────────────
+build:
+  stage: build
+  timeout: 15m
+  before_script:
+    - npm ci
+  script:
+    - npm run build
+    # Assert the artifact, not the exit code. esbuild can be configured into
+    # writing nothing and still exit 0; `main.js` is what Obsidian loads, so
+    # its existence is the only statement worth making about this build.
+    - |
+      test -f main.js || { echo "REFUSING: build exited 0 but produced no main.js"; exit 1; }
+    - echo "build OK — main.js $(wc -c < main.js) bytes"
+  artifacts:
+    paths: [main.js]
+    expire_in: 1 week
