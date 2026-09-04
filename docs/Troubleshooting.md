@@ -50,7 +50,7 @@ If a folder is *also* shared through Team Relay, deletion has a second, separate
 **Symptom:** You delete files from a folder while Obsidian is closed. On the next launch they
 reappear one at a time, every few seconds, until all of them are back.
 
-**Cause:** That folder is also shared through EVC Team Relay. Team Relay is a CRDT client — a
+**Cause:** That folder is also shared through Team Relay. Team Relay is a CRDT client — a
 change made on disk while it is offline is not an operation it can replay, it is a divergence.
 On reconnect the relay's copy is authoritative, so it puts the files back. Measured: 115 files
 deleted with Obsidian closed, 115 restored, one every 5-8 seconds, over ~13 minutes.

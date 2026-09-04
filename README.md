@@ -114,7 +114,7 @@ Sync conflicts happen when both sides change before a sync runs.
 
 Local Sync is designed for solo workflows. If you need **team collaboration** or want to **publish your vault** as a website (private, protected, or public):
 
-→ [**EVC Team Relay**](https://github.com/entire-vc/evc-team-relay-obsidian-plugin) — self-hosted collaborative editing for Obsidian teams.
+→ [**Team Relay**](https://community.obsidian.md/plugins/team-relay) — collaborative editing for Obsidian teams, self-hosted or managed.
 
 ---
 
