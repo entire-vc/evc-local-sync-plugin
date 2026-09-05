@@ -707,7 +707,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     const blob = new Blob([jsonContent], { type: "application/json" });
     const url = URL.createObjectURL(blob);
 
-    const link = activeDocument.createElement("a");
+    const link = createEl("a");
     link.href = url;
     link.download = `evc-sync-config-${new Date().toISOString().slice(0, 10)}.json`;
     activeDocument.body.appendChild(link);
@@ -722,7 +722,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    * Import configuration from JSON file
    */
   private importConfiguration(): void {
-    const input = activeDocument.createElement("input");
+    const input = createEl("input");
     input.type = "file";
     input.accept = ".json";
 

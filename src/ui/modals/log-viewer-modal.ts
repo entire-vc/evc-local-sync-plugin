@@ -331,7 +331,7 @@ export class LogViewerModal extends Modal {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
 
-    const link = activeDocument.createElement("a");
+    const link = createEl("a");
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
