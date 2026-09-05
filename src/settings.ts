@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting, Notice, ButtonComponent, setIcon } from "obsidian";
+import type { SettingDefinitionItem } from "obsidian";
 import type EVCLocalSyncPlugin from "./main";
 import { MappingModal } from "./ui/modals/mapping-modal";
 import { showConfirmation } from "./ui/modals/confirmation-modal";
@@ -118,25 +119,147 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  /**
+   * Declarative definitions (Obsidian 1.13+): makes every setting findable
+   * via Obsidian's settings search. Each item's `render` reuses the same
+   * imperative section builders `display()` used to call directly, just
+   * targeting the row element the framework hands it instead of
+   * `containerEl` — the actual settings UI is unchanged, only how it's
+   * wired for search.
+   *
+   * Returning a non-empty array here means the framework renders from this
+   * declaratively and never calls `display()` on Obsidian 1.13+ (see its
+   * doc comment below) — so every section that used to run inside
+   * `display()` must have a home here too, or it silently stops rendering.
+   */
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      {
+        name: "Local sync to AI agent",
+        searchable: false,
+        render: (setting) => {
+          setting.settingEl.empty();
+          setting.settingEl.addClass("evc-settings-header-wrapper");
+          this.displayHeader(setting.settingEl);
+        },
+      },
+      {
+        type: "group",
+        heading: "Sync",
+        items: [
+          { name: "Sync mode", desc: "How synchronization is triggered", render: (s) => this.configureSyncMode(s) },
+          { name: "Sync on startup", desc: "Automatically sync all enabled mappings when Obsidian starts", render: (s) => this.configureSyncOnStartup(s) },
+          { name: "Debounce (ms)", desc: "Delay before syncing after file changes (for on-change mode)", render: (s) => this.configureDebounce(s) },
+          { name: "Scheduled interval (minutes)", desc: "How often to sync when using scheduled mode", render: (s) => this.configureScheduledInterval(s) },
+          { name: "Conflict resolution", desc: "How to handle files modified in both locations", render: (s) => this.configureConflictResolution(s) },
+          { name: "Create backups", desc: "Create backup files before overwriting during sync", render: (s) => this.configureCreateBackups(s) },
+          { name: "Show auto-sync notifications", desc: "Show notifications when files are auto-synced (on-change mode)", render: (s) => this.configureAutoSyncNotifications(s) },
+          { name: "Follow symlinks", desc: "Follow symbolic links when scanning directories", render: (s) => this.configureFollowSymlinks(s) },
+          { name: "Sync deletions", desc: "Delete a file in the other location too when it is deleted in one location", render: (s) => this.configureSyncDeletions(s) },
+          { name: "Confirm deletions", desc: "Show confirmation before deleting files during sync", render: (s) => this.configureConfirmDeletions(s) },
+          { name: "Log retention (days)", desc: "How long to keep sync logs", render: (s) => this.configureLogRetention(s) },
+        ],
+      },
+      {
+        type: "group",
+        heading: "File types",
+        items: [
+          { name: "File extensions", desc: "File types to sync (comma-separated, e.g., .md, .canvas)", render: (s) => this.configureFileExtensions(s) },
+          { name: "Exclude patterns", desc: "Folders/files to exclude from sync (comma-separated, e.g., node_modules, .git)", render: (s) => this.configureExcludePatterns(s) },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Project mappings",
+        items: [
+          { name: "Add project mapping", desc: "Create a new sync mapping between an AI project and Obsidian folder", render: (s) => this.configureAddMappingButton(s) },
+          {
+            name: "Configured mappings",
+            desc: "Table of configured sync mappings between AI projects and Obsidian folders",
+            aliases: ["mapping list", "mappings table"],
+            render: (setting) => {
+              setting.settingEl.empty();
+              this.mountMappingsTable(setting.settingEl);
+            },
+          },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Actions",
+        items: [
+          {
+            name: "Actions",
+            desc: "Sync all projects, dry run, view logs",
+            aliases: ["sync all", "dry run", "view logs"],
+            render: (setting) => {
+              setting.settingEl.empty();
+              this.displayActionsSectionBody(setting.settingEl);
+            },
+          },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Configuration",
+        items: [
+          {
+            name: "Configuration",
+            desc: "Export or import settings and mappings as a JSON file",
+            aliases: ["export configuration", "import configuration"],
+            render: (setting) => {
+              setting.settingEl.empty();
+              this.displayConfigurationSectionBody(setting.settingEl);
+            },
+          },
+        ],
+      },
+    ];
+  }
+
+  /**
+   * Pre-1.13 fallback only. On 1.13+ `getSettingDefinitions()` above always
+   * returns a non-empty array, so the framework renders declaratively and
+   * never calls this — it exists solely for hosts below `minAppVersion`'s
+   * declarative-API floor, per this method's own base-class doc
+   * ("Only implement display() as a fallback for plugins that need to
+   * support Obsidian versions older than 1.13.0").
+   */
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("evc-sync-settings");
 
-    // Header with logo, title, description, and GitHub link
     this.displayHeader(containerEl);
-
-    // General Settings Section
     this.displayGeneralSettings(containerEl);
-
-    // File Types Section
     this.displayFileTypesSettings(containerEl);
-
-    // Project Mappings Section
     this.displayMappingsSettings(containerEl);
-
-    // Actions Section
     this.displayActionsSection(containerEl);
+    this.displayConfigurationSection(containerEl);
+  }
+
+  /**
+   * Full-tab refresh after a structural change (e.g. import replacing every
+   * mapping). Rebuilds the same content `display()` builds, without going
+   * through the deprecated `display()` symbol or the 1.13+-only `update()`
+   * (this plugin's `minAppVersion` is below 1.13.0, so referencing either
+   * from here trips the community-review linter — `no-deprecated` on the
+   * former, `no-unsupported-api` on the latter). On a 1.13+ host the
+   * framework rebuilds this same content from `getSettingDefinitions()` the
+   * next time the tab is opened regardless, so a plain imperative redraw
+   * here is a correct bridge on every supported version, not just old ones.
+   */
+  private refreshAll(): void {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.addClass("evc-sync-settings");
+
+    this.displayHeader(containerEl);
+    this.displayGeneralSettings(containerEl);
+    this.displayFileTypesSettings(containerEl);
+    this.displayMappingsSettings(containerEl);
+    this.displayActionsSection(containerEl);
+    this.displayConfigurationSection(containerEl);
   }
 
   private displayHeader(containerEl: HTMLElement): void {
@@ -211,9 +334,21 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    */
   private displayGeneralSettings(containerEl: HTMLElement): void {
     new Setting(containerEl).setName("Sync").setHeading();
+    this.configureSyncMode(new Setting(containerEl));
+    this.configureSyncOnStartup(new Setting(containerEl));
+    this.configureDebounce(new Setting(containerEl));
+    this.configureScheduledInterval(new Setting(containerEl));
+    this.configureConflictResolution(new Setting(containerEl));
+    this.configureCreateBackups(new Setting(containerEl));
+    this.configureAutoSyncNotifications(new Setting(containerEl));
+    this.configureFollowSymlinks(new Setting(containerEl));
+    this.configureSyncDeletions(new Setting(containerEl));
+    this.configureConfirmDeletions(new Setting(containerEl));
+    this.configureLogRetention(new Setting(containerEl));
+  }
 
-    // Sync Mode
-    new Setting(containerEl)
+  private configureSyncMode(setting: Setting): void {
+    setting
       .setName("Sync mode")
       .setDesc("How synchronization is triggered")
       .addDropdown((dropdown) =>
@@ -228,9 +363,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // Sync on Startup
-    new Setting(containerEl)
+  private configureSyncOnStartup(setting: Setting): void {
+    setting
       .setName("Sync on startup")
       .setDesc("Automatically sync all enabled mappings when Obsidian starts")
       .addToggle((toggle) =>
@@ -241,9 +377,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // Debounce
-    new Setting(containerEl)
+  private configureDebounce(setting: Setting): void {
+    setting
       .setName("Debounce (ms)")
       .setDesc(
         "Delay before syncing after file changes (for on-change mode). Recommended: 2000-5000ms."
@@ -260,9 +397,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             }
           })
       );
+  }
 
-    // Scheduled Interval
-    new Setting(containerEl)
+  private configureScheduledInterval(setting: Setting): void {
+    setting
       .setName("Scheduled interval (minutes)")
       .setDesc(
         "How often to sync when using scheduled mode. Minimum: 1 minute."
@@ -279,9 +417,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             }
           })
       );
+  }
 
-    // Conflict Resolution
-    new Setting(containerEl)
+  private configureConflictResolution(setting: Setting): void {
+    setting
       .setName("Conflict resolution")
       .setDesc("How to handle files modified in both locations")
       .addDropdown((dropdown) =>
@@ -297,9 +436,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // Create Backups
-    new Setting(containerEl)
+  private configureCreateBackups(setting: Setting): void {
+    setting
       .setName("Create backups")
       .setDesc("Create backup files before overwriting during sync")
       .addToggle((toggle) =>
@@ -316,9 +456,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             }
           })
       );
+  }
 
-    // Show Auto-Sync Notifications
-    new Setting(containerEl)
+  private configureAutoSyncNotifications(setting: Setting): void {
+    setting
       .setName("Show auto-sync notifications")
       .setDesc("Show notifications when files are auto-synced (on-change mode)")
       .addToggle((toggle) =>
@@ -329,9 +470,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // Follow Symlinks
-    new Setting(containerEl)
+  private configureFollowSymlinks(setting: Setting): void {
+    setting
       .setName("Follow symlinks")
       .setDesc("Follow symbolic links when scanning directories")
       .addToggle((toggle) =>
@@ -342,9 +484,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // Sync Deletions (FR-060)
-    new Setting(containerEl)
+  private configureSyncDeletions(setting: Setting): void {
+    setting
       .setName("Sync deletions")
       .setDesc(
         "When a file is deleted in one location, delete it in the other location too. Off by default: while it is off, a file you delete on one side is restored from the other side on the next sync."
@@ -357,9 +500,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // Confirm Deletions (FR-060)
-    new Setting(containerEl)
+  private configureConfirmDeletions(setting: Setting): void {
+    setting
       .setName("Confirm deletions")
       .setDesc("Show confirmation before deleting files during sync")
       .addToggle((toggle) =>
@@ -370,9 +514,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // Log Retention
-    new Setting(containerEl)
+  private configureLogRetention(setting: Setting): void {
+    setting
       .setName("Log retention (days)")
       .setDesc("How long to keep sync logs")
       .addText((text) =>
@@ -394,9 +539,12 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    */
   private displayFileTypesSettings(containerEl: HTMLElement): void {
     new Setting(containerEl).setName("File types").setHeading();
+    this.configureFileExtensions(new Setting(containerEl));
+    this.configureExcludePatterns(new Setting(containerEl));
+  }
 
-    // File Extensions
-    new Setting(containerEl)
+  private configureFileExtensions(setting: Setting): void {
+    setting
       .setName("File extensions")
       .setDesc("File types to sync (comma-separated, e.g., .md, .canvas)")
       .addText((text) =>
@@ -411,9 +559,10 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // Exclude Patterns
-    new Setting(containerEl)
+  private configureExcludePatterns(setting: Setting): void {
+    setting
       .setName("Exclude patterns")
       .setDesc(
         "Folders/files to exclude from sync (comma-separated, e.g., node_modules, .git)"
@@ -437,9 +586,12 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    */
   private displayMappingsSettings(containerEl: HTMLElement): void {
     new Setting(containerEl).setName("Project mappings").setHeading();
+    this.configureAddMappingButton(new Setting(containerEl));
+    this.mountMappingsTable(containerEl);
+  }
 
-    // Add Mapping button
-    new Setting(containerEl)
+  private configureAddMappingButton(setting: Setting): void {
+    setting
       .setName("Add project mapping")
       .setDesc("Create a new sync mapping between an AI project and Obsidian folder")
       .addButton((button) =>
@@ -448,12 +600,12 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
           .setCta()
           .onClick(() => this.openAddMappingModal())
       );
+  }
 
-    // Mappings container
+  private mountMappingsTable(containerEl: HTMLElement): void {
     this.mappingsContainer = containerEl.createDiv({
       cls: "evc-mappings-container",
     });
-
     this.refreshMappingsTable();
   }
 
@@ -618,7 +770,14 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
    */
   private displayActionsSection(containerEl: HTMLElement): void {
     new Setting(containerEl).setName("Actions").setHeading();
+    this.displayActionsSectionBody(containerEl);
+  }
 
+  /**
+   * Body only, no heading — the declarative path's "Actions" group supplies
+   * its own heading, so this is also what `getSettingDefinitions()` calls.
+   */
+  private displayActionsSectionBody(containerEl: HTMLElement): void {
     const actionsContainer = containerEl.createDiv({ cls: "evc-actions-container" });
 
     // Sync All button
@@ -653,10 +812,22 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
           this.plugin.viewLogs();
         })
       );
+  }
 
-    // Configuration Management section
+  /**
+   * Display Configuration (export/import) section
+   */
+  private displayConfigurationSection(containerEl: HTMLElement): void {
     new Setting(containerEl).setName("Configuration").setHeading();
+    this.displayConfigurationSectionBody(containerEl);
+  }
 
+  /**
+   * Body only, no heading — the declarative path's "Configuration" group
+   * supplies its own heading, so this is also what `getSettingDefinitions()`
+   * calls.
+   */
+  private displayConfigurationSectionBody(containerEl: HTMLElement): void {
     const configContainer = containerEl.createDiv({ cls: "evc-config-container" });
 
     // Export Configuration
@@ -766,7 +937,7 @@ export class EVCLocalSyncSettingTab extends PluginSettingTab {
             new Notice(`Imported ${importedMappings.length} mapping(s) successfully`);
 
             // Refresh display
-            this.display();
+            this.refreshAll();
           });
         });
       }).catch((error: Error) => {
