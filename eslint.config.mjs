@@ -28,7 +28,9 @@ export default defineConfig([
     rules: {
       // EVC is our brand acronym; skip strings starting with "EVC"
       "obsidianmd/ui/sentence-case": ["error", {
-        ignoreRegex: ["^EVC", "^node_modules"],
+        ignoreRegex: ["^EVC", "^node_modules", "^\\.", "\\.(git|claude|obsidian)\\b"],  // dot-prefixed tokens are
+          // directory names (.git, .claude): capitalising them would print
+          // a path that does not exist.
       }],
     },
   },
