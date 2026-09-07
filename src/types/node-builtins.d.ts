@@ -39,6 +39,38 @@ declare module "fs/promises" {
   export function writeFile(p: string, d: string, e?: string): Promise<void>;
 }
 
+// chokidar's own .d.ts imports `Stats` from "node:fs" (not "fs") and `EventEmitter`
+// from "node:events" — both unresolved specifiers on top of the ones above, since we
+// only declared the bare "fs"/"path"/"crypto" names. `skipLibCheck` hides the fallout
+// inside chokidar's .d.ts itself, but `FSWatcher.on(...)` still resolves through it to
+// `any` at every call site in file-watcher.ts, which is where the warnings surface.
+declare module "node:fs" {
+  export * from "fs";
+}
+
+declare module "node:events" {
+  // Mirrors the real @types/node generic EventEmitter closely enough for chokidar's
+  // `class FSWatcher extends EventEmitter<FSWatcherEventMap>` to type `.on()` per-event
+  // instead of falling back to `any`.
+  export class EventEmitter<Events extends Record<string, unknown[]> = Record<string, unknown[]>> {
+    on<K extends keyof Events>(event: K, listener: (...args: Events[K]) => void): this;
+    once<K extends keyof Events>(event: K, listener: (...args: Events[K]) => void): this;
+    off<K extends keyof Events>(event: K, listener: (...args: Events[K]) => void): this;
+    emit<K extends keyof Events>(event: K, ...args: Events[K]): boolean;
+    removeAllListeners(event?: keyof Events): this;
+  }
+}
+
+// sync-state-manager.ts narrows a caught error via `NodeJS.ErrnoException`.
+declare namespace NodeJS {
+  interface ErrnoException extends Error {
+    code?: string;
+    errno?: number;
+    syscall?: string;
+    path?: string;
+  }
+}
+
 declare module "path" {
   export const sep: string;
   export function basename(p: string, ext?: string): string;
