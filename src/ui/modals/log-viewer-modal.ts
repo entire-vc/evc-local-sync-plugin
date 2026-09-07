@@ -152,23 +152,28 @@ export class LogViewerModal extends Modal {
         cls: "evc-log-cell-timestamp",
       });
 
-      // Direction
+      // Direction — a cycle-start marker (#94002fd9) has no direction; render a
+      // neutral placeholder instead of crashing on the (former assumption of an)
+      // always-present field.
       const dirCell = row.createEl("td", { cls: "evc-log-cell-direction" });
-      const dirText = entry.direction === "ai-to-obs" ? "AI -> Obs" : "Obs -> AI";
-      const dirClass =
-        entry.direction === "ai-to-obs"
-          ? "evc-log-direction-ai-to-obs"
-          : "evc-log-direction-obs-to-ai";
-      dirCell.createSpan({
-        text: dirText,
-        cls: dirClass,
-      });
+      if (entry.direction) {
+        const dirText = entry.direction === "ai-to-obs" ? "AI -> Obs" : "Obs -> AI";
+        const dirClass =
+          entry.direction === "ai-to-obs"
+            ? "evc-log-direction-ai-to-obs"
+            : "evc-log-direction-obs-to-ai";
+        dirCell.createSpan({ text: dirText, cls: dirClass });
+      } else {
+        dirCell.createSpan({ text: "—" });
+      }
 
-      // File
+      // File — a cycle-start entry has no single file; show the mapping list it
+      // covered instead, so the row still says something rather than a blank cell.
       const fileCell = row.createEl("td", { cls: "evc-log-cell-file" });
+      const fileText = entry.file ?? (entry.mappingNames ? entry.mappingNames.join(", ") : "—");
       fileCell.createSpan({
-        text: entry.file,
-        attr: { title: entry.file },
+        text: fileText,
+        attr: { title: fileText },
       });
 
       // Action
@@ -235,7 +240,7 @@ export class LogViewerModal extends Modal {
     // Apply search
     if (this.searchQuery.trim()) {
       const query = this.searchQuery.toLowerCase();
-      entries = entries.filter((e) => e.file.toLowerCase().includes(query));
+      entries = entries.filter((e) => (e.file ?? "").toLowerCase().includes(query));
     }
 
     return entries;

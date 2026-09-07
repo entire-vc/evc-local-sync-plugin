@@ -1,17 +1,45 @@
-import type { App } from "obsidian";
+import { Notice, type App } from "obsidian";
 import type { SyncAction } from "./sync-engine";
 
 /**
- * Log entry for a sync operation (FR-030)
+ * What triggered a sync cycle. Threaded through to every log entry that cycle
+ * produces, plus the standalone "cycle-start" marker entry (see logCycleStart) —
+ * without it, a run that copied zero files (nothing had changed) leaves NO trace
+ * that it ran at all, which is exactly what made the startup cycle unreadable on
+ * a live measurement (#94002fd9): files were demonstrably written, but nothing in
+ * sync-log.json distinguished "this came from startup" from any other trigger,
+ * and a fully-uneventful startup run left no entry whatsoever.
+ */
+export type SyncTriggerMode = "startup" | "manual" | "scheduled" | "on-change";
+
+/**
+ * Log entry for a sync operation (FR-030), OR a cycle-start marker.
+ *
+ * Two shapes share this one type rather than a discriminated union so the
+ * flat on-disk array and the existing per-file consumers (log-viewer-modal,
+ * CSV/JSON export) don't need a schema migration — a cycle-start entry simply
+ * leaves the per-file fields (direction/mappingId/mappingName/file) unset and
+ * carries `mappingNames` instead. `action: "cycle-start"` is what tells them apart.
  */
 export interface LogEntry {
   id: string;
   timestamp: Date;
-  direction: "ai-to-obs" | "obs-to-ai";
-  mappingId: string;
-  mappingName: string;
-  file: string;
-  action: SyncAction;
+  /** Present on every entry once a caller passes a mode through log()/logCycleStart(). */
+  mode?: SyncTriggerMode;
+  direction?: "ai-to-obs" | "obs-to-ai";
+  mappingId?: string;
+  mappingName?: string;
+  /** cycle-start only: every mapping the cycle attempted, not just the ones with changes. */
+  mappingNames?: string[];
+  file?: string;
+  /**
+   * Fully-resolved destination path the file was actually written to/read from —
+   * distinct from `file` (which is only the relative path within whichever root)
+   * so the log can tell a write into `docs/` apart from one into `docs/dev-docs/`
+   * when a mapping's docsSubdir folds them to look identical relatively (#94002fd9).
+   */
+  targetPath?: string;
+  action: SyncAction | "cycle-start";
   success: boolean;
   error?: string;
   details?: string;
@@ -47,11 +75,14 @@ interface StoredLogData {
 interface SerializedLogEntry {
   id: string;
   timestamp: string;
-  direction: "ai-to-obs" | "obs-to-ai";
-  mappingId: string;
-  mappingName: string;
-  file: string;
-  action: SyncAction;
+  mode?: SyncTriggerMode;
+  direction?: "ai-to-obs" | "obs-to-ai";
+  mappingId?: string;
+  mappingName?: string;
+  mappingNames?: string[];
+  file?: string;
+  targetPath?: string;
+  action: SyncAction | "cycle-start";
   success: boolean;
   error?: string;
   details?: string;
@@ -112,9 +143,7 @@ export class SyncLogger {
     this.rotate();
 
     // Auto-save (debounced in practice, but for now immediate)
-    this.save().catch((err) => {
-      console.error("EVC Sync Logger: Failed to save log", err);
-    });
+    this.autosave("log a sync operation");
 
     return fullEntry;
   }
@@ -136,11 +165,56 @@ export class SyncLogger {
     this.rotate();
 
     // Auto-save
-    this.save().catch((err) => {
-      console.error("EVC Sync Logger: Failed to save log", err);
-    });
+    this.autosave("log a batch of sync operations");
 
     return fullEntries;
+  }
+
+  /**
+   * Record that a sync CYCLE started — independent of whether any file ends up
+   * copied. Without this, a cycle that finds nothing to do (everything already
+   * in sync) leaves zero entries, and the log can no longer distinguish "ran,
+   * nothing changed" from "never ran" — exactly the gap that made the startup
+   * cycle unreadable on a live measurement (#94002fd9, mode=startup writes were
+   * demonstrably happening while sync-log.json's mtime never moved). Call this
+   * BEFORE the sync runs, once per cycle, regardless of outcome; per-file
+   * entries from the same cycle should carry the same `mode` so both can be
+   * correlated by time + mode.
+   */
+  logCycleStart(mode: SyncTriggerMode, mappings: { id: string; name: string }[]): LogEntry {
+    const fullEntry: LogEntry = {
+      id: generateLogId(),
+      timestamp: new Date(),
+      mode,
+      mappingNames: mappings.map((m) => m.name),
+      action: "cycle-start",
+      success: true,
+    };
+
+    this.entries.push(fullEntry);
+    this.dirty = true;
+    this.rotate();
+    this.autosave("record a cycle start");
+
+    return fullEntry;
+  }
+
+  /**
+   * Persist immediately, and if it fails, surface a VISIBLE warning rather than
+   * only a console line (#94002fd9 acceptance: a swallowed write failure is
+   * indistinguishable from "nothing happened" to whoever reads sync-log.json
+   * later — the whole point of this file existing). Never throws: a failed log
+   * write must not take the sync itself down.
+   */
+  private autosave(context: string): void {
+    this.save().catch((err) => {
+      console.error(`EVC Sync Logger: failed to ${context} — sync-log.json was NOT updated`, err);
+      new Notice(
+        `EVC Sync: could not write sync-log.json (${context}). The sync itself is unaffected, ` +
+          "but this run will be invisible in the log — see the developer console for details.",
+        10000
+      );
+    });
   }
 
   /**
@@ -235,9 +309,7 @@ export class SyncLogger {
   clear(): void {
     this.entries = [];
     this.dirty = true;
-    this.save().catch((err) => {
-      console.error("EVC Sync Logger: Failed to save after clear", err);
-    });
+    this.autosave("save after clear");
   }
 
   /**
@@ -246,9 +318,7 @@ export class SyncLogger {
   clearByMapping(mappingId: string): void {
     this.entries = this.entries.filter((e) => e.mappingId !== mappingId);
     this.dirty = true;
-    this.save().catch((err) => {
-      console.error("EVC Sync Logger: Failed to save after clear", err);
-    });
+    this.autosave("save after clear");
   }
 
   /**
@@ -379,23 +449,29 @@ export class SyncLogger {
     const headers = [
       "id",
       "timestamp",
+      "mode",
       "direction",
       "mappingId",
       "mappingName",
       "file",
+      "targetPath",
       "action",
       "success",
       "error",
       "details",
     ];
 
+    // cycle-start entries carry no direction/mappingId/file — `?? ""` keeps those
+    // columns blank instead of the literal string "undefined" (String(undefined)).
     const rows = this.entries.map((e) => [
       e.id,
       e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
-      e.direction,
-      e.mappingId,
-      e.mappingName,
-      e.file,
+      e.mode ?? "",
+      e.direction ?? "",
+      e.mappingId ?? "",
+      e.mappingName ?? (e.mappingNames ? e.mappingNames.join("; ") : ""),
+      e.file ?? "",
+      e.targetPath ?? "",
       e.action,
       String(e.success),
       e.error || "",

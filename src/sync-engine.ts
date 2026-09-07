@@ -82,7 +82,7 @@ export interface GuardSkip {
  * shape replaced (#3bb939c5).
  */
 export type WriteOutcome =
-  | { written: true }
+  | { written: true; targetPath: string }
   | { written: false; guard: GuardKind; root: string };
 
 /**
@@ -90,6 +90,14 @@ export type WriteOutcome =
  */
 export interface SyncFileResult {
   file: string;
+  /**
+   * Fully-resolved destination the write actually landed at (or the delete
+   * target). Distinct from `file` (a relative path) so the log can tell a
+   * write into `docs/` apart from one into `docs/dev-docs/` when docsSubdir
+   * folds them to the same-looking relative path (#94002fd9). Absent for
+   * skips/failures where nothing was actually written.
+   */
+  targetPath?: string;
   action: SyncAction;
   direction: SyncDirectionType;
   success: boolean;
@@ -362,6 +370,7 @@ export class SyncEngine {
                 await this.deleteFile(deletion);
                 files.push({
                   file: deletion.relativePath,
+                  targetPath: deletion.targetPath,
                   action: "delete",
                   direction: deletion.existsIn === "obsidian" ? "ai-to-obs" : "obs-to-ai",
                   success: true,
@@ -379,6 +388,7 @@ export class SyncEngine {
                 errors.push(errorMsg);
                 files.push({
                   file: deletion.relativePath,
+                  targetPath: deletion.targetPath,
                   action: "delete",
                   direction: deletion.existsIn === "obsidian" ? "ai-to-obs" : "obs-to-ai",
                   success: false,
@@ -402,6 +412,7 @@ export class SyncEngine {
             if (outcome.written) {
               files.push({
                 file: relPath,
+                targetPath: outcome.targetPath,
                 action: "copy",
                 direction: "ai-to-obs",
                 success: true,
@@ -476,6 +487,7 @@ export class SyncEngine {
                 if (outcome.written) {
                   files.push({
                     file: relPath,
+                    targetPath: outcome.targetPath,
                     action: "update",
                     direction: "ai-to-obs",
                     success: true,
@@ -514,6 +526,7 @@ export class SyncEngine {
                 if (outcome.written) {
                   files.push({
                     file: relPath,
+                    targetPath: outcome.targetPath,
                     action: "update",
                     direction: "obs-to-ai",
                     success: true,
@@ -571,6 +584,7 @@ export class SyncEngine {
               if (outcome.written) {
                 files.push({
                   file: relPath,
+                  targetPath: outcome.targetPath,
                   action: "copy",
                   direction: "obs-to-ai",
                   success: true,
@@ -619,6 +633,7 @@ export class SyncEngine {
               if (outcome.written) {
                 files.push({
                   file: relPath,
+                  targetPath: outcome.targetPath,
                   action: "copy",
                   direction: "obs-to-ai",
                   success: true,
@@ -661,6 +676,7 @@ export class SyncEngine {
                 if (outcome.written) {
                   files.push({
                     file: relPath,
+                    targetPath: outcome.targetPath,
                     action: "update",
                     direction: "obs-to-ai",
                     success: true,
@@ -1330,7 +1346,7 @@ export class SyncEngine {
     if (fs.existsSync(absoluteTargetPath)) {
       fs.utimesSync(absoluteTargetPath, sourceMtime, sourceMtime);
     }
-    return { written: true };
+    return { written: true, targetPath };
   }
 
   /**
@@ -1405,7 +1421,7 @@ export class SyncEngine {
     if (sourceMtime) {
       fs.utimesSync(targetPath, sourceMtime, sourceMtime);
     }
-    return { written: true };
+    return { written: true, targetPath };
   }
 
   /**
