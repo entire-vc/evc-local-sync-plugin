@@ -7,13 +7,18 @@
  * next storage audit had no choice but manual birthtime/cmp archaeology
  * because the log gave zero signal that a cycle had even run.
  *
- * This exercises the exact glue `EVCLocalSyncPlugin.syncAllProjects(mode)`
- * runs in src/main.ts — logger.logCycleStart(mode, mappings) BEFORE the sync,
- * then engine.syncAll() results logged per-file with `mode` + `targetPath` —
- * without instantiating the full Obsidian Plugin class (main.ts extends
- * Obsidian's `Plugin`, which needs a real plugin-loading lifecycle no test
- * harness here provides; every other integration test in this suite tests
- * SyncEngine directly for the same reason — see syncEngineFlow.test.ts).
+ * This calls `runSyncCycle()` from `src/sync-cycle.ts` — the SAME function
+ * `EVCLocalSyncPlugin.syncAllProjects(mode)` calls in src/main.ts — rather
+ * than a local reimplementation of that glue. A prior version of this test
+ * hand-copied the glue (logCycleStart() before syncAll(), then per-file
+ * log()) instead of importing it; that copy passed unconditionally even with
+ * the call removed from main.ts, because it never touched main.ts's code
+ * path. Importing the shared function is what makes a regression in either
+ * main.ts or sync-cycle.ts fail this test (main.ts itself still can't be
+ * instantiated here — it extends Obsidian's `Plugin`, which needs a real
+ * plugin-loading lifecycle no test harness here provides; every other
+ * integration test in this suite tests SyncEngine directly for the same
+ * reason — see syncEngineFlow.test.ts).
  *
  * Reads the actual on-disk sync-log.json the mocked vault adapter wrote, not
  * just the in-memory logger state, so this fails if a future change breaks
@@ -33,6 +38,7 @@ jest.mock("../../src/obsidian-internal", () => ({
 
 import { SyncEngine } from "../../src/sync-engine";
 import { SyncLogger, DEFAULT_LOGGER_CONFIG, type LogEntry } from "../../src/logger";
+import { runSyncCycle } from "../../src/sync-cycle";
 import type { EVCLocalSyncSettings, ProjectMapping } from "../../src/settings";
 
 function makeTempDir(): string {
@@ -48,7 +54,10 @@ function writeFile(dir: string, relPath: string, content: string): void {
 function makeSettings(overrides: Partial<EVCLocalSyncSettings> = {}): EVCLocalSyncSettings {
 	return {
 		version: "1.0",
-		syncMode: "manual",
+		// "manual" would never actually reach syncAllProjects("startup") in prod
+		// — main.ts's startup guard requires syncMode !== "manual" — so a fixture
+		// stuck on "manual" would silently test a combination that can't occur.
+		syncMode: "on-startup",
 		syncOnStartup: true,
 		debounceMs: 100,
 		scheduledIntervalMinutes: 60,
@@ -76,43 +85,6 @@ function makeMapping(aiPath: string, obsPath: string, overrides: Partial<Project
 		syncDirection: "ai-to-obs",
 		...overrides,
 	};
-}
-
-/**
- * Reproduces exactly the glue in `EVCLocalSyncPlugin.syncAllProjects(mode)`
- * (src/main.ts): logCycleStart() BEFORE the sync, then per-file log() after,
- * both carrying `mode`. This glue itself is trivial and untested directly
- * (main.ts extends Obsidian's Plugin, which no harness here can instantiate —
- * every other integration test in this suite tests SyncEngine directly for
- * the same reason, see syncEngineFlow.test.ts). What IS real production code
- * under test: SyncEngine populating `SyncFileResult.targetPath` on every
- * write, and SyncLogger.logCycleStart()/log() actually persisting mode +
- * targetPath to sync-log.json on disk — that's what the red control below
- * exercises, by reverting those two files and re-running this exact test.
- */
-async function runSyncCycle(
-	engine: SyncEngine,
-	logger: SyncLogger,
-	mode: "startup" | "manual",
-	mappings: ProjectMapping[]
-): Promise<void> {
-	logger.logCycleStart(mode, mappings);
-	const results = await engine.syncAll();
-	for (const result of results) {
-		for (const fileResult of result.files) {
-			logger.log({
-				mode,
-				direction: fileResult.direction,
-				mappingId: result.mapping.id,
-				mappingName: result.mapping.name,
-				file: fileResult.file,
-				targetPath: fileResult.targetPath,
-				action: fileResult.action,
-				success: fileResult.success,
-				error: fileResult.error,
-			});
-		}
-	}
 }
 
 describe("Integration: startup sync cycle is visible in sync-log.json (#94002fd9)", () => {
@@ -159,7 +131,7 @@ describe("Integration: startup sync cycle is visible in sync-log.json (#94002fd9
 	}
 
 	test("GREEN: a startup cycle writes a mode=startup cycle-start marker AND per-file entries with matching target paths", async () => {
-		await runSyncCycle(engine, logger, "startup", [mapping]);
+		await runSyncCycle(logger, engine, "startup", [mapping]);
 
 		// The file writes actually happened on disk — otherwise this test would
 		// pass for the wrong reason (nothing to log because nothing was written).
@@ -197,11 +169,11 @@ describe("Integration: startup sync cycle is visible in sync-log.json (#94002fd9
 
 	test("GREEN: a startup cycle that copies nothing (already in sync) still leaves the cycle-start marker", async () => {
 		// First cycle actually copies the files…
-		await runSyncCycle(engine, logger, "startup", [mapping]);
+		await runSyncCycle(logger, engine, "startup", [mapping]);
 		// …a second startup cycle immediately after has nothing new to do (same
 		// mtimes) — this is the exact shape of the original bug: a no-op run must
 		// still be provably distinguishable from "the cycle never ran at all".
-		await runSyncCycle(engine, logger, "startup", [mapping]);
+		await runSyncCycle(logger, engine, "startup", [mapping]);
 
 		const onDisk = readOnDiskLog();
 		const cycleMarkers = onDisk.entries.filter((e) => e.mode === "startup" && e.action === "cycle-start");
@@ -209,8 +181,14 @@ describe("Integration: startup sync cycle is visible in sync-log.json (#94002fd9
 	});
 });
 
-// Red control for this file (run manually, not part of CI): stash the
-// targetPath plumbing in src/sync-engine.ts (WriteOutcome/SyncFileResult/the
-// copyFileTo* return sites) and src/logger.ts (logCycleStart, the mode/
-// targetPath fields) and re-run the GREEN tests above — they must fail. See
-// the closing task comment for the actual red/green transcript.
+// Red control for this file (run manually, not part of CI):
+// 1. Remove the `runSyncCycle(...)` call from src/main.ts's syncAllProjects()
+//    (the actual shipped startup/manual/scheduled trigger path) and re-run
+//    the GREEN tests above — they must fail, because this test imports the
+//    SAME src/sync-cycle.ts function main.ts calls; there is no reimplementation
+//    left to accidentally pass on its own. See the closing task comment for
+//    the actual red/green transcript.
+// 2. Separately, stashing the targetPath plumbing in src/sync-engine.ts
+//    (WriteOutcome/SyncFileResult/the copyFileTo* return sites) or
+//    src/logger.ts (logCycleStart, the mode/targetPath fields) must also
+//    fail these tests — that's the content assertion, not just presence.
