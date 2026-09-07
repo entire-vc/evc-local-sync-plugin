@@ -37,6 +37,16 @@ export class TFolder extends TAbstractFile {
 	}
 }
 
+/**
+ * SyncLogger (and log-viewer-modal) construct `new Notice(...)` on save
+ * failures / UI clicks — a real Notice pops a toast in the Obsidian UI, which
+ * doesn't exist under Jest. This just needs to be constructible without
+ * throwing; tests that care about a warning being shown spy on this instead.
+ */
+export class Notice {
+	constructor(_message: string, _timeout?: number) {}
+}
+
 export class App {
 	vault: ReturnType<typeof makeVaultMock>;
 	constructor(vault: ReturnType<typeof makeVaultMock>) {

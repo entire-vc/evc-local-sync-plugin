@@ -17,7 +17,7 @@ import {
 } from "./settings";
 import { MappingManager } from "./mapping-manager";
 import { SyncEngine, type SyncResult, type GuardSkip } from "./sync-engine";
-import { SyncLogger, DEFAULT_LOGGER_CONFIG } from "./logger";
+import { SyncLogger, DEFAULT_LOGGER_CONFIG, type SyncTriggerMode } from "./logger";
 import { FileWatcher, FileChangeEvent } from "./file-watcher";
 import { DryRunModal } from "./ui/modals/dry-run-modal";
 import { LogViewerModal } from "./ui/modals/log-viewer-modal";
@@ -117,7 +117,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
     if (this.settings.syncOnStartup && this.settings.syncMode !== "manual") {
       // Delay to allow Obsidian to fully load
       window.setTimeout(() => {
-        void this.syncAllProjects();
+        void this.syncAllProjects("startup");
       }, 2000);
     }
   }
@@ -184,7 +184,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
 
     this.scheduledSyncInterval = window.setInterval(() => {
       console.debug("EVC Sync: Running scheduled sync...");
-      void this.syncAllProjects();
+      void this.syncAllProjects("scheduled");
     }, intervalMs);
 
     console.debug(`EVC Sync: Scheduled sync started (every ${this.settings.scheduledIntervalMinutes} minutes)`);
@@ -340,13 +340,20 @@ export default class EVCLocalSyncPlugin extends Plugin {
   /**
    * Sync all enabled project mappings (FR-021)
    */
-  async syncAllProjects(): Promise<void> {
+  async syncAllProjects(mode: SyncTriggerMode = "manual"): Promise<void> {
     const enabledMappings = this.mappingManager.getEnabled();
 
     if (enabledMappings.length === 0) {
       new Notice("No enabled mappings found");
       return;
     }
+
+    // Record that this cycle started BEFORE running it, independent of whether
+    // any file ends up copied (#94002fd9) — a startup cycle that finds nothing
+    // to do left ZERO trace under the old per-file-only logging, indistinguishable
+    // from "never ran". This is what makes the next storage measurement readable
+    // from sync-log.json alone instead of birthtime/cmp archaeology.
+    this.logger.logCycleStart(mode, enabledMappings);
 
     // Update status bar
     this.statusBar?.setStatus("syncing", "Syncing...");
@@ -359,10 +366,12 @@ export default class EVCLocalSyncPlugin extends Plugin {
       for (const result of results) {
         for (const fileResult of result.files) {
           this.logger.log({
+            mode,
             direction: fileResult.direction,
             mappingId: result.mapping.id,
             mappingName: result.mapping.name,
             file: fileResult.file,
+            targetPath: fileResult.targetPath,
             action: fileResult.action,
             success: fileResult.success,
             error: fileResult.error,
@@ -439,10 +448,12 @@ export default class EVCLocalSyncPlugin extends Plugin {
       // Log all sync operations
       for (const fileResult of result.files) {
         this.logger.log({
+          mode: "manual",
           direction: fileResult.direction,
           mappingId: result.mapping.id,
           mappingName: result.mapping.name,
           file: fileResult.file,
+          targetPath: fileResult.targetPath,
           action: fileResult.action,
           success: fileResult.success,
           error: fileResult.error,
@@ -563,10 +574,12 @@ export default class EVCLocalSyncPlugin extends Plugin {
         // Log all sync operations
         for (const fileResult of result.files) {
           this.logger.log({
+            mode: "on-change",
             direction: fileResult.direction,
             mappingId: result.mapping.id,
             mappingName: result.mapping.name,
             file: fileResult.file,
+            targetPath: fileResult.targetPath,
             action: fileResult.action,
             success: fileResult.success,
             error: fileResult.error,
