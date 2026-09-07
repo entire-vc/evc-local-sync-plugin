@@ -90,7 +90,7 @@ declare module "crypto" {
 }
 
 // `process` is a Node global; without @types/node it is unresolved and every
-// `process.platform` / `process.env` read becomes `any`.
+// `process.platform` read, or access to its `env` property, becomes `any`.
 declare const process: {
   platform: string;
   env: Record<string, string | undefined>;
