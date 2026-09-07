@@ -5,6 +5,11 @@ All notable changes to EVC Local Sync plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.10] - 2026-09-07
+
+### Fixed
+- Community review: the catalog scanner lints this repository without resolving `@types/node`, so every `fs` / `path` / `crypto` / `process` value read as `any` and the scorecard reported 351 `no-unsafe-*` findings that do not exist in a normal build. The Node built-in surface the plugin actually uses is now declared in-repo (`src/types/node-builtins.d.ts`), including the `node:fs` / `node:events` specifiers chokidar's own types import and the `NodeJS.ErrnoException` global. Measured in a scanner-shaped environment: 357 findings to 0. No runtime change — the declarations are types only and are not part of the built bundle.
+
 ## [1.3.3] - 2026-06-30
 
 ### Fixed
