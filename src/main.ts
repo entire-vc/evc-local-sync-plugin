@@ -18,6 +18,7 @@ import {
 import { MappingManager } from "./mapping-manager";
 import { SyncEngine, type SyncResult, type GuardSkip } from "./sync-engine";
 import { SyncLogger, DEFAULT_LOGGER_CONFIG, type SyncTriggerMode } from "./logger";
+import { runSyncCycle } from "./sync-cycle";
 import { FileWatcher, FileChangeEvent } from "./file-watcher";
 import { DryRunModal } from "./ui/modals/dry-run-modal";
 import { LogViewerModal } from "./ui/modals/log-viewer-modal";
@@ -348,36 +349,17 @@ export default class EVCLocalSyncPlugin extends Plugin {
       return;
     }
 
-    // Record that this cycle started BEFORE running it, independent of whether
-    // any file ends up copied (#94002fd9) — a startup cycle that finds nothing
-    // to do left ZERO trace under the old per-file-only logging, indistinguishable
-    // from "never ran". This is what makes the next storage measurement readable
-    // from sync-log.json alone instead of birthtime/cmp archaeology.
-    this.logger.logCycleStart(mode, enabledMappings);
-
     // Update status bar
     this.statusBar?.setStatus("syncing", "Syncing...");
     new Notice(`Syncing ${enabledMappings.length} project(s)...`);
 
     try {
-      const results = await this.syncEngine.syncAll();
-
-      // Log all sync operations
-      for (const result of results) {
-        for (const fileResult of result.files) {
-          this.logger.log({
-            mode,
-            direction: fileResult.direction,
-            mappingId: result.mapping.id,
-            mappingName: result.mapping.name,
-            file: fileResult.file,
-            targetPath: fileResult.targetPath,
-            action: fileResult.action,
-            success: fileResult.success,
-            error: fileResult.error,
-          });
-        }
-      }
+      // logCycleStart() fires BEFORE the engine runs, independent of whether
+      // any file ends up copied (#94002fd9) — a startup cycle that finds nothing
+      // to do left ZERO trace under the old per-file-only logging, indistinguishable
+      // from "never ran". This is what makes the next storage measurement readable
+      // from sync-log.json alone instead of birthtime/cmp archaeology.
+      const results = await runSyncCycle(this.logger, this.syncEngine, mode, enabledMappings);
 
       // Guard-suppressed writes get their own notice, BEFORE the success one, so
       // "12 synced" never stands in for "…and 40 silently didn't" (#4dce529d).
