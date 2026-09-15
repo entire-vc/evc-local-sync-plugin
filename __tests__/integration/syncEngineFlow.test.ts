@@ -179,6 +179,128 @@ describe("Integration: SyncEngine AI→Obs file copy flow", () => {
 	});
 });
 
+describe("Integration: close-mtime conflicts are not silently skipped (#9f8b5bbb, audit #26edb457)", () => {
+	// mtime alone used to decide "same" for any pair within 1s of each other —
+	// a same-second double-edit (real measurement: 0.445556640625ms apart) has
+	// genuinely different content but got a silent, permanent skip. Content
+	// hash now disambiguates the <1s window; outside it, behavior is unchanged.
+	let aiDir: string;
+	let vaultDir: string;
+	let engine: SyncEngine;
+	let vault: ReturnType<typeof makeVaultMock>;
+	const relPath = "same-second-conflict.md";
+
+	beforeEach(async () => {
+		aiDir = makeTempDir();
+		vaultDir = makeTempDir();
+		vault = makeVaultMock(vaultDir);
+		const app = { vault, _vaultBasePath: vaultDir } as unknown as import("obsidian").App;
+		engine = new SyncEngine(app, makeSettings({ mappings: [] }), "/tmp/evc-ls-plugin");
+		await engine.init();
+	});
+
+	afterEach(() => {
+		rmDir(aiDir);
+		rmDir(vaultDir);
+	});
+
+	// Sets an exact mtime (and atime) on a file already written to disk.
+	function touch(dir: string, relative: string, mtimeMs: number): void {
+		const abs = path.join(dir, relative);
+		const seconds = mtimeMs / 1000;
+		fs.utimesSync(abs, seconds, seconds);
+	}
+
+	test("RED-CONTROL: two different versions within 1s of each other resolve via newer-wins instead of silently skipping", async () => {
+		const base = Date.now();
+		writeFile(aiDir, relPath, "AI-side edit");
+		writeFile(vaultDir, `project-docs/${relPath}`, "Obsidian-side edit, made moments later");
+		touch(aiDir, relPath, base);
+		touch(vaultDir, `project-docs/${relPath}`, base + 400); // 400ms later, well inside the old 1s "same" band
+
+		const mapping = makeMapping(aiDir, "project-docs", {
+			id: "map-close-mtime-newer-wins",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+		const result = await engine.syncMapping(mapping);
+
+		const record = result.files.find((f) => f.file === relPath);
+		expect(record?.action).not.toBe("skip");
+		expect(record?.action).toBe("update");
+		expect(result.conflicts.some((c) => c.relativePath === relPath)).toBe(true);
+
+		// newer-wins (default strategy): Obsidian side is 400ms newer, so it
+		// should have propagated to the AI side — content must have converged,
+		// not stayed silently diverged.
+		expect(readFile(aiDir, relPath)).toBe("Obsidian-side edit, made moments later");
+	});
+
+	test("RED-CONTROL: always-ask prompts the user for a close-mtime, different-content pair instead of skipping", async () => {
+		const base = Date.now();
+		writeFile(aiDir, relPath, "AI-side edit");
+		writeFile(vaultDir, `project-docs/${relPath}`, "Obsidian-side edit, made moments later");
+		touch(aiDir, relPath, base);
+		touch(vaultDir, `project-docs/${relPath}`, base + 400);
+
+		let promptedWith: string | undefined;
+		engine.setConflictModalCallback(async (conflict) => {
+			promptedWith = conflict.relativePath;
+			return "use-ai";
+		});
+
+		const mapping = makeMapping(aiDir, "project-docs", {
+			id: "map-close-mtime-always-ask",
+			bidirectional: true,
+			syncDirection: undefined,
+			conflictResolutionOverride: "always-ask",
+		});
+		await engine.syncMapping(mapping);
+
+		expect(promptedWith).toBe(relPath);
+	});
+
+	test("negative control: identical content within the same close-mtime window stays idempotent (no update, no conflict)", async () => {
+		const base = Date.now();
+		const sameContent = "Identical content on both sides";
+		writeFile(aiDir, relPath, sameContent);
+		writeFile(vaultDir, `project-docs/${relPath}`, sameContent);
+		touch(aiDir, relPath, base);
+		touch(vaultDir, `project-docs/${relPath}`, base + 400);
+
+		const mapping = makeMapping(aiDir, "project-docs", {
+			id: "map-close-mtime-identical",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+		const result = await engine.syncMapping(mapping);
+
+		const record = result.files.find((f) => f.file === relPath);
+		expect(record?.action).toBe("skip");
+		expect(result.conflicts).toHaveLength(0);
+		expect(result.filesCopied).toBe(0);
+	});
+
+	test("negative control: different content OUTSIDE the 1s window is still resolved by raw mtime, unaffected by the hash check", async () => {
+		const base = Date.now();
+		writeFile(aiDir, relPath, "AI-side, much older");
+		writeFile(vaultDir, `project-docs/${relPath}`, "Obsidian-side, newer by 5 seconds");
+		touch(aiDir, relPath, base);
+		touch(vaultDir, `project-docs/${relPath}`, base + 5000);
+
+		const mapping = makeMapping(aiDir, "project-docs", {
+			id: "map-far-mtime-newer-wins",
+			bidirectional: true,
+			syncDirection: undefined,
+		});
+		const result = await engine.syncMapping(mapping);
+
+		const record = result.files.find((f) => f.file === relPath);
+		expect(record?.action).toBe("update");
+		expect(readFile(aiDir, relPath)).toBe("Obsidian-side, newer by 5 seconds");
+	});
+});
+
 describe("Integration: overlapping bidirectional mappings must not nest docs/docs", () => {
 	let aiDirA: string;
 	let aiDirB: string;

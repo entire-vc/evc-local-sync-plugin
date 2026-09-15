@@ -447,7 +447,7 @@ export class SyncEngine {
           }
         } else {
           // File exists in both - check for conflict
-          const comparison = this.compareFileTimes(aiFile, obsFile);
+          const comparison = await this.compareFileTimes(aiFile, obsFile);
 
           if (comparison === "same") {
             // Files are the same, skip
@@ -668,7 +668,7 @@ export class SyncEngine {
             }
           } else {
             // File exists in both - check for conflict (Obsidian is source)
-            const comparison = this.compareFileTimes(aiFile, obsFile);
+            const comparison = await this.compareFileTimes(aiFile, obsFile);
 
             if (comparison !== "same" && obsFile.mtime > aiFile.mtime) {
               try {
@@ -840,7 +840,7 @@ export class SyncEngine {
             reason: "File exists only in AI project",
           });
         } else {
-          const comparison = this.compareFileTimes(aiFile, obsFile);
+          const comparison = await this.compareFileTimes(aiFile, obsFile);
 
           if (comparison === "ai-newer") {
             plannedActions.push({
@@ -881,7 +881,7 @@ export class SyncEngine {
               reason: "File exists only in Obsidian",
             });
           } else if (mapping.bidirectional) {
-            const comparison = this.compareFileTimes(aiFile, obsFile);
+            const comparison = await this.compareFileTimes(aiFile, obsFile);
 
             if (comparison === "obs-newer") {
               plannedActions.push({
@@ -1248,17 +1248,46 @@ export class SyncEngine {
   }
 
   /**
-   * Compare file modification times
+   * Compare two files across the AI/Obsidian boundary to decide whether they
+   * hold the same version or a real conflict.
+   *
+   * mtime alone is not proof of content equality (audit #9f8b5bbb, source
+   * #26edb457): two independently-edited versions can land inside the <1s
+   * window below — e.g. a same-second double-edit — and get treated as "same"
+   * even though their content differs, which turns a real conflict into a
+   * silent, permanent skip. When the mtimes are close, fall back to content
+   * hash: only a hash match is "same"; a mismatch is resolved like any other
+   * conflict, using the raw (even sub-millisecond) mtime delta.
    */
-  private compareFileTimes(aiFile: FileInfo, obsFile: FileInfo): "same" | "ai-newer" | "obs-newer" {
-    // Consider files "same" if mtime difference is less than 1 second
+  private async compareFileTimes(
+    aiFile: FileInfo,
+    obsFile: FileInfo
+  ): Promise<"same" | "ai-newer" | "obs-newer"> {
     const timeDiff = Math.abs(aiFile.mtime - obsFile.mtime);
 
-    if (timeDiff < 1000) {
+    if (timeDiff < 1000 && (await this.filesHaveSameContent(aiFile.absolutePath, obsFile.absolutePath))) {
       return "same";
     }
 
     return aiFile.mtime > obsFile.mtime ? "ai-newer" : "obs-newer";
+  }
+
+  /**
+   * Content-hash equality check used to disambiguate close mtimes. Returns
+   * false (never claims equality) if either side can't be hashed — e.g. a
+   * permission error or a race with a concurrent delete — so an unreadable
+   * file is treated as a conflict rather than silently skipped.
+   */
+  private async filesHaveSameContent(pathA: string, pathB: string): Promise<boolean> {
+    try {
+      const [hashA, hashB] = await Promise.all([
+        SyncStateManager.hashFile(pathA),
+        SyncStateManager.hashFile(pathB),
+      ]);
+      return hashA === hashB;
+    } catch {
+      return false;
+    }
   }
 
   /**
