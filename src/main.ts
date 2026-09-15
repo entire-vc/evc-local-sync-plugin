@@ -23,9 +23,11 @@ import { FileWatcher, FileChangeEvent } from "./file-watcher";
 import { DryRunModal } from "./ui/modals/dry-run-modal";
 import { LogViewerModal } from "./ui/modals/log-viewer-modal";
 import { ConflictModal } from "./ui/modals/conflict-modal";
+import { showConfirmation } from "./ui/modals/confirmation-modal";
 import { StatusBarItem } from "./ui/status-bar";
 import { RibbonIcon } from "./ui/ribbon-icon";
 import type { ConflictInfo, ResolutionDecision } from "./conflict-resolver";
+import type { DetectedDeletion } from "./sync-state-manager";
 
 /**
  * EVC Local Sync to AI Agent
@@ -64,6 +66,7 @@ export default class EVCLocalSyncPlugin extends Plugin {
 
     this.syncEngine = new SyncEngine(this.app, this.settings, pluginDir);
     this.syncEngine.setConflictModalCallback((conflict) => this.showConflictModal(conflict));
+    this.syncEngine.setDeletionConfirmCallback((deletions) => this.showDeletionConfirmModal(deletions));
 
     // Initialize sync state manager
     await this.syncEngine.init();
@@ -519,6 +522,25 @@ export default class EVCLocalSyncPlugin extends Plugin {
       });
       modal.open();
     });
+  }
+
+  /**
+   * Show a confirmation dialog before deleting files detected as removed on
+   * the other side of a mapping (FR-060, "Show confirmation before deleting
+   * files during sync"). Only called when `confirmDeletions` is enabled —
+   * SyncEngine treats a missing callback as "confirmation unavailable" and
+   * skips the deletion rather than deleting silently.
+   */
+  private showDeletionConfirmModal(deletions: DetectedDeletion[]): Promise<boolean> {
+    const list = deletions
+      .map((d) => `"${d.relativePath}" (deleted from ${d.deletedFrom}, will also be removed from ${d.existsIn})`)
+      .join("; ");
+    const message =
+      deletions.length === 1
+        ? `A file was deleted on one side of the mapping and will also be removed on the other: ${list}. Proceed?`
+        : `${deletions.length} files were deleted on one side of a mapping and will also be removed on the other: ${list}. Proceed?`;
+
+    return showConfirmation(this.app, message, "Delete");
   }
 
   /**

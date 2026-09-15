@@ -179,6 +179,116 @@ describe("Integration: SyncEngine AI→Obs file copy flow", () => {
 	});
 });
 
+describe("Integration: deletion confirmation is fail-closed, not fail-open (#e481680c, audit #26edb457)", () => {
+	// `confirmDeletions=true` with no dialog callback registered used to fall
+	// through to `shouldDelete = true` — a real deletion propagated with zero
+	// confirmation, silently, exactly the setting's own purpose defeated.
+	let aiDir: string;
+	let vaultDir: string;
+	let pluginDir: string;
+	let engine: SyncEngine;
+	let vault: ReturnType<typeof makeVaultMock>;
+	const relPath = "note-98.md";
+
+	beforeEach(async () => {
+		aiDir = makeTempDir();
+		vaultDir = makeTempDir();
+		pluginDir = makeTempDir(); // syncDeletions persists sync-state.json here; needs a real, isolated dir
+		vault = makeVaultMock(vaultDir);
+		// Obsidian-side deletions go through app.fileManager.trashFile, which the
+		// shared obsidian mock doesn't stub (no existing test exercised deletion
+		// before this bug); mirror the observable effect (file gone) here.
+		const fileManager = {
+			trashFile: async (file: { path: string }) => {
+				fs.rmSync(path.join(vaultDir, file.path), { force: true });
+			},
+		};
+		const app = { vault, _vaultBasePath: vaultDir, fileManager } as unknown as import("obsidian").App;
+		engine = new SyncEngine(app, makeSettings({ mappings: [] }), pluginDir);
+		await engine.init();
+	});
+
+	afterEach(() => {
+		rmDir(aiDir);
+		rmDir(vaultDir);
+		rmDir(pluginDir);
+	});
+
+	function makeDeletionMapping(): ProjectMapping {
+		return makeMapping(aiDir, "project-docs", { id: "map-deletion-confirm" });
+	}
+
+	async function seedBaseline(mapping: ProjectMapping): Promise<void> {
+		writeFile(aiDir, relPath, "content that will be deleted");
+		engine.updateSettings(makeSettings({ syncDeletions: true, confirmDeletions: true, mappings: [] }));
+		await engine.syncMapping(mapping); // establishes the sync-state baseline + copies the file
+		expect(fileExists(vaultDir, `project-docs/${relPath}`)).toBe(true);
+		fs.unlinkSync(path.join(aiDir, relPath)); // simulate the source-side delete the next cycle must detect
+	}
+
+	test("RED-CONTROL: no confirmation dialog registered — deletion is NOT applied silently", async () => {
+		const mapping = makeDeletionMapping();
+		await seedBaseline(mapping);
+		// Deliberately never call engine.setDeletionConfirmCallback(...).
+
+		const result = await engine.syncMapping(mapping);
+
+		expect(fileExists(vaultDir, `project-docs/${relPath}`)).toBe(true);
+		expect(result.filesDeleted).toBe(0);
+		const record = result.files.find((f) => f.file === relPath);
+		expect(record?.action).toBe("skip");
+		expect(record?.error).toContain("deletion-confirmation-required");
+	});
+
+	test("a declined confirmation does not delete, and is reported (not silent)", async () => {
+		const mapping = makeDeletionMapping();
+		await seedBaseline(mapping);
+		engine.setDeletionConfirmCallback(async () => false);
+
+		const result = await engine.syncMapping(mapping);
+
+		expect(fileExists(vaultDir, `project-docs/${relPath}`)).toBe(true);
+		expect(result.filesDeleted).toBe(0);
+		const record = result.files.find((f) => f.file === relPath);
+		expect(record?.action).toBe("skip");
+		expect(record?.error).toContain("deletion-declined-by-user");
+	});
+
+	test("an accepted confirmation deletes the target", async () => {
+		const mapping = makeDeletionMapping();
+		await seedBaseline(mapping);
+		let promptedWith: string[] = [];
+		engine.setDeletionConfirmCallback(async (deletions) => {
+			promptedWith = deletions.map((d) => d.relativePath);
+			return true;
+		});
+
+		const result = await engine.syncMapping(mapping);
+
+		expect(promptedWith).toEqual([relPath]);
+		expect(fileExists(vaultDir, `project-docs/${relPath}`)).toBe(false);
+		expect(result.filesDeleted).toBe(1);
+		const record = result.files.find((f) => f.file === relPath);
+		expect(record?.action).toBe("delete");
+		expect(record?.success).toBe(true);
+	});
+
+	test("negative control: confirmDeletions=false still deletes without any dialog (unchanged, out of scope)", async () => {
+		writeFile(aiDir, relPath, "content that will be deleted");
+		const mapping = makeDeletionMapping();
+		engine.updateSettings(makeSettings({ syncDeletions: true, confirmDeletions: false, mappings: [] }));
+		await engine.syncMapping(mapping);
+		expect(fileExists(vaultDir, `project-docs/${relPath}`)).toBe(true);
+		fs.unlinkSync(path.join(aiDir, relPath));
+		// No callback registered — must not matter when confirmDeletions is off.
+
+		const result = await engine.syncMapping(mapping);
+
+		expect(fileExists(vaultDir, `project-docs/${relPath}`)).toBe(false);
+		expect(result.filesDeleted).toBe(1);
+	});
+});
+
 describe("Integration: close-mtime conflicts are not silently skipped (#9f8b5bbb, audit #26edb457)", () => {
 	// mtime alone used to decide "same" for any pair within 1s of each other —
 	// a same-second double-edit (real measurement: 0.445556640625ms apart) has

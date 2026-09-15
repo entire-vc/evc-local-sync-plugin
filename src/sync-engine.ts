@@ -358,10 +358,41 @@ export class SyncEngine {
         );
 
         if (deletions.length > 0) {
-          // Confirm deletions if setting is enabled
-          let shouldDelete = true;
-          if (this.settings.confirmDeletions && this.deletionConfirmCallback) {
+          // Confirm deletions if setting is enabled.
+          //
+          // `confirmDeletions=true` with no callback registered used to fall
+          // through to `shouldDelete = true` (fail-open) — the setting existed
+          // to gate deletion behind a dialog, but a sync path that never wired
+          // one up (e.g. a startup cycle running before the modal callback is
+          // set) deleted files with zero confirmation, silently. Confirmation
+          // being unavailable is not the same as confirmation being granted:
+          // fail closed instead.
+          let shouldDelete: boolean;
+          let skipReason: string | undefined;
+          if (!this.settings.confirmDeletions) {
+            shouldDelete = true;
+          } else if (this.deletionConfirmCallback) {
             shouldDelete = await this.deletionConfirmCallback(deletions);
+            if (!shouldDelete) {
+              skipReason = "deletion-declined-by-user";
+            }
+          } else {
+            shouldDelete = false;
+            skipReason = "deletion-confirmation-required (no confirmation dialog registered)";
+          }
+
+          if (!shouldDelete && skipReason) {
+            for (const deletion of deletions) {
+              files.push({
+                file: deletion.relativePath,
+                targetPath: deletion.targetPath,
+                action: "skip",
+                direction: deletion.existsIn === "obsidian" ? "ai-to-obs" : "obs-to-ai",
+                success: true,
+                error: skipReason,
+              });
+              filesSkipped++;
+            }
           }
 
           if (shouldDelete) {
