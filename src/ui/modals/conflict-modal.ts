@@ -1,13 +1,14 @@
 import { App, Modal } from "obsidian";
 import type { ConflictInfo, ResolutionDecision } from "../../conflict-resolver";
+import { getConflictContentPreview } from "../../conflict-content-preview";
 
 /**
  * Modal for resolving file conflicts (FR-013)
  *
  * Shows when conflict resolution strategy is "always-ask":
  * - File path
- * - AI version info (modified time, size)
- * - Obsidian version info (modified time, size)
+ * - AI version info (modified time, size, content preview)
+ * - Obsidian version info (modified time, size, content preview)
  * - Action buttons: Use AI Version / Use Obsidian Version / Skip
  */
 export class ConflictModal extends Modal {
@@ -86,6 +87,7 @@ export class ConflictModal extends Modal {
       size: this.conflict.aiSize,
       path: this.conflict.aiPath,
     });
+    this.renderVersionContent(aiEl, this.conflict.aiPath);
 
     // VS separator
     comparisonEl.createDiv({
@@ -101,6 +103,7 @@ export class ConflictModal extends Modal {
       size: this.conflict.obsidianSize,
       path: this.conflict.obsidianPath,
     });
+    this.renderVersionContent(obsEl, this.conflict.obsidianPath);
 
     // Determine newer version
     const aiTime = this.conflict.aiMtime instanceof Date
@@ -168,6 +171,35 @@ export class ConflictModal extends Modal {
       cls: "evc-conflict-detail-value evc-conflict-detail-path evc-cursor-help",
       attr: { title: info.path },
     });
+  }
+
+  /**
+   * Render the file's actual content so the choice isn't made blind on mtime/size
+   * alone. Binary/too-large/unreadable files fall back to no content section at all —
+   * the mtime/size/path block above is unchanged for that case.
+   */
+  private renderVersionContent(containerEl: HTMLElement, absolutePath: string): void {
+    const preview = getConflictContentPreview(absolutePath);
+    if (preview.status !== "ok" || preview.text === null) {
+      return;
+    }
+
+    const sectionEl = containerEl.createDiv({ cls: "evc-conflict-content-section" });
+    sectionEl.createSpan({
+      text: "Content:",
+      cls: "evc-conflict-detail-label",
+    });
+    sectionEl.createEl("pre", {
+      text: preview.text,
+      cls: "evc-conflict-content",
+    });
+
+    if (preview.truncated) {
+      sectionEl.createDiv({
+        text: `… truncated — showing first ${preview.text.length.toLocaleString()} of ${preview.totalLength.toLocaleString()} characters`,
+        cls: "evc-conflict-content-truncated",
+      });
+    }
   }
 
   /**
