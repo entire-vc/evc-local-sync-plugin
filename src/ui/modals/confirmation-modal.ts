@@ -9,6 +9,7 @@ export class ConfirmationModal extends Modal {
   private cancelText: string;
   private onConfirm: () => void;
   private onCancel?: () => void;
+  private resolved = false;
 
   constructor(
     app: App,
@@ -51,6 +52,7 @@ export class ConfirmationModal extends Modal {
       cls: "evc-btn",
     });
     cancelBtn.addEventListener("click", () => {
+      this.resolved = true;
       this.onCancel?.();
       this.close();
     });
@@ -61,6 +63,7 @@ export class ConfirmationModal extends Modal {
       cls: "evc-btn evc-btn-cta mod-cta",
     });
     confirmBtn.addEventListener("click", () => {
+      this.resolved = true;
       this.onConfirm();
       this.close();
     });
@@ -68,6 +71,14 @@ export class ConfirmationModal extends Modal {
 
   onClose(): void {
     this.contentEl.empty();
+    // Esc / backdrop click dismiss the modal without going through either
+    // button's click handler above — Obsidian calls onClose() directly for
+    // every dismissal path. Treat anything that reaches here unresolved as
+    // a cancel, so showConfirmation()'s promise settles instead of hanging.
+    if (!this.resolved) {
+      this.resolved = true;
+      this.onCancel?.();
+    }
   }
 }
 
