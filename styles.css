@@ -873,6 +873,32 @@
   white-space: nowrap;
 }
 
+.evc-conflict-content-section {
+  margin-top: 0.75rem;
+}
+
+.evc-conflict-content {
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin: 0.25rem 0 0 0;
+}
+
+.evc-conflict-content-truncated {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
 .evc-conflict-buttons {
   display: flex;
   justify-content: center;
