@@ -5,6 +5,11 @@ All notable changes to EVC Local Sync plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.11] - 2026-09-15
+
+### Fixed
+- The startup sync cycle (`syncOnStartup: true`) left `sync-log.json` untouched whenever it had nothing to copy, or if a run's cycle-start marker was never written — indistinguishable from "did not run" when read afterward. The sync path now always writes a `cycle-start` entry (mode + mappings) before the run, and each copied file's log entry carries its resolved `targetPath` (so `docs/` is distinguishable from `docs/dev-docs/` in the log). A failure to write the log now surfaces a visible Notice instead of failing silently.
+
 ## [1.3.10] - 2026-09-07
 
 ### Fixed
