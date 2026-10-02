@@ -164,8 +164,11 @@ test:
 manifest-check:
   stage: check
   timeout: 5m
-  cache: {}          # reads three JSON files; npm deps are not involved
+  cache: {}          # reads four JSON files; npm deps are not involved
+  before_script:
+    - apk add --no-cache git   # npm version hook stages manifests in the test fixture
   script:
+    - node --test scripts/test-version-bump.mjs
     - |
       set -eu
       PKG_VER=$(node -p "require('./package.json').version")
@@ -177,11 +180,17 @@ manifest-check:
         echo "REFUSING: manifest.json version ($MFT_VER) != package.json version ($PKG_VER). Fix manifest.json."
         exit 1
       fi
+      BETA_VER=$(node -p "require('./manifest-beta.json').version")
+      echo "manifest-beta.json: $BETA_VER"
+      if [ "$BETA_VER" != "$MFT_VER" ]; then
+        echo "REFUSING: manifest-beta.json version ($BETA_VER) != manifest.json version ($MFT_VER). Run the version-bump hook."
+        exit 1
+      fi
       if ! grep -q "\"$MFT_VER\"" versions.json; then
         echo "REFUSING: versions.json has no entry for $MFT_VER. Add it before releasing."
         exit 1
       fi
-      echo "OK: manifest.json, package.json, versions.json all agree on $PKG_VER ✓"
+      echo "OK: manifest.json, manifest-beta.json, package.json, versions.json all agree on $PKG_VER ✓"
       echo
       echo "NOT CHECKED HERE: that $PKG_VER is strictly greater than the latest"
       echo "published GitHub release. That guard needs a GitHub token this"
