@@ -1,5 +1,5 @@
 # CI — EVC Local Sync Obsidian Plugin
-# Based on F3 ci-ts-plugin template (bob/docs/ci-templates/ci-ts-plugin.yml)
+# Based on F3 ci-ts-plugin template (the internal ts-plugin CI template)
 #
 # ENFORCE mode is live: all jobs use continue-on-error: false (blocking).
 # CI_MODE=ENFORCE is set in repo Settings → Variables → Actions.

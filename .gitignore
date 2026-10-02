@@ -47,3 +47,5 @@ coverage/
 
 # Obsidian test vault data
 data.json
+__pycache__/
+*.pyc
