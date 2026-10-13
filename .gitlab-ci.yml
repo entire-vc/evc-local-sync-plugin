@@ -85,6 +85,9 @@ default:
 # evc-mesh drifted from the wrapper list within a day of being written.
 hold-gate:
   stage: gate
+  # Light gate → dedicated fast lane (#16c94bf8): runner `ci-fast` on VM117, so it
+  # does not queue behind heavy jobs of other projects on the shared runner.
+  tags: [ci-fast]
   image: alpine:latest
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -229,6 +232,9 @@ build:
 # red instead of quietly green.
 topology-gate:
   stage: gate
+  # Light gate → dedicated fast lane (#16c94bf8): runner `ci-fast` on VM117, so it
+  # does not queue behind heavy jobs of other projects on the shared runner.
+  tags: [ci-fast]
   image: python:3.12-alpine
   allow_failure: false
   rules:
