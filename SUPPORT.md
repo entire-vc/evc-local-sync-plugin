@@ -45,7 +45,7 @@ the thread than go quiet.
 
 This repository holds EVC Local Sync, which keeps a vault folder and a filesystem folder in step.
 It is a separate product from Team Relay — if your question is about sharing a folder with
-other people, that is [Team Relay](https://github.com/entire-vc/evc-team-relay-plugin).
+other people, that is [Team Relay](https://community.obsidian.md/plugins/team-relay-sync).
 
 Conflicts and unexpected overwrites are the reports we most want to receive. The
 [conflict case template](https://github.com/entire-vc/evc-local-sync-plugin/issues/new/choose) asks
