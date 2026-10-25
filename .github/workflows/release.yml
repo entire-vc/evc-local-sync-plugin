@@ -1,7 +1,7 @@
 name: Release
 # Obsidian plugin release: build → attest provenance → publish a release tagged EXACTLY =
 # manifest.version (BARE semver, no 'v'), with main.js/manifest.json/styles.css as assets.
-# Closes the two recurring gaps (Pavel 2026-06-24): (1) no/v-prefixed release → not distributed,
+# Avoids two distribution gaps: (1) no/v-prefixed release → not distributed,
 # (2) "assets missing GitHub artifact attestation" scorecard recommendation.
 on:
   push:
