@@ -5,6 +5,12 @@ All notable changes to EVC Local Sync plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.12] - 2026-11-01
+
+### Changed
+- File watcher: updated to chokidar 6 (bundled into `main.js`). Verified on the real `FileWatcher` bundle under Node 18 and Node 20 (native and polling backends: create, edit, rename, delete) — the `node >= 22.22` engines line in the lockfile applies to development installs, not to the shipped bundle. `minAppVersion` is unchanged (1.6.6). CI now runs this check on Node 18 and 20 (`watcher-compat`).
+- Security: `fast-uri` 3.1.9, `handlebars` 4.7.10, `brace-expansion` 5.0.12 and other dependency updates.
+
 ## [1.3.11] - 2026-09-15
 
 ### Fixed

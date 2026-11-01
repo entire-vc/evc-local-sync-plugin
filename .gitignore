@@ -49,3 +49,4 @@ coverage/
 data.json
 __pycache__/
 *.pyc
+dist-smoke/
