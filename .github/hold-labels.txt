@@ -1,0 +1,10 @@
+# Labels that prevent merging; matching is case-insensitive.
+hold
+no-automerge
+no-merge
+do-not-merge
+dont-merge
+wip
+blocked
+needs-review
+needs-independent-review
