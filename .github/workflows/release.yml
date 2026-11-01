@@ -24,7 +24,7 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
       - run: npm ci || npm install
       - run: npm run build
       - name: Restore committed manifest.json (a dev/debug build must NEVER change the published version)

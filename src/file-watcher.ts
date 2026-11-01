@@ -197,10 +197,11 @@ export class FileWatcher {
           stabilityThreshold: 300,
           pollInterval: 100,
         },
-        // Use polling for Obsidian to detect atomic writes
-        usePolling: usePolling,
-        interval: usePolling ? 1000 : 100,
-        binaryInterval: 2000,
+        // Use polling for Obsidian to detect atomic writes; "auto" picks
+        // native recursive fs.watch on macOS/Windows, per-directory elsewhere
+        backend: usePolling ? "polling" : "auto",
+        pollingInterval: usePolling ? 1000 : 100,
+        pollingBinaryInterval: 2000,
       });
 
       watcher.on("add", (relativePath) => {
