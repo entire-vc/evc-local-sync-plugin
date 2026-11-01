@@ -1,0 +1,47 @@
+# Require pull requests and merge groups to pass the label gate.
+name: Hold gate
+
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, labeled, unlabeled, ready_for_review, converted_to_draft]
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: hold-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hold-gate:
+    name: Hold gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the gate
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/hold-labels.txt
+            .github/scripts/hold_gate.py
+          sparse-checkout-cone-mode: false
+
+      - name: Confirm the gate was actually checked out
+        run: |
+          test -f .github/scripts/hold_gate.py || { echo "::error::hold_gate.py missing after checkout"; exit 1; }
+          test -f .github/hold-labels.txt      || { echo "::error::hold-labels.txt missing after checkout"; exit 1; }
+
+      - name: Refuse any pull request carrying a hold label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          MERGE_GROUP_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+        run: python3 .github/scripts/hold_gate.py

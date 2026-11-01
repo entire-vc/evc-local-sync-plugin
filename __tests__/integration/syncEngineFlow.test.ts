@@ -607,7 +607,7 @@ describe("Integration: docsSubdir-fold self-nesting (#9d86c756)", () => {
 });
 
 describe("Integration: shared-docsSubdir shadow duplicate (#3bb939c5 — #58/1.3.4 did not hold)", () => {
-	// Reproduces the LIVE incident measured on Pavel's vault after release 1.3.4:
+	// Reproduces the LIVE incident measured on a real vault after release 1.3.4:
 	// #58 widened the self-nesting guard to compare a write's relativePath
 	// against BOTH mapping roots' basenames — but that only catches a leftover
 	// subtree whose name happens to match a *relativePath segment*. Here the

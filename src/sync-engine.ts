@@ -1765,7 +1765,7 @@ export class SyncEngine {
    * RELATIVE PATH's leading segment against the mapping roots' basenames, but
    * here the offending segment is the DESTINATION ROOT ITSELF, one level
    * higher than any relativePath that guard ever inspects — confirmed live on
-   * a real vault after 1.3.4 (Local Sync docs/dev-docs/issues/…, mesh task
+   * a real vault after 1.3.4 (Local Sync docs/dev-docs/issues/…, issue
    * 3bb939c5): the guard never even looked, because relativePath was
    * "issues/a.md", not "dev-docs/issues/a.md".
    *
